@@ -18,6 +18,15 @@ export interface TutorialStep {
     left?: DimensionValue;
     right?: DimensionValue;
   };
+  spotlight?: {
+    top?: DimensionValue;
+    bottom?: DimensionValue;
+    left?: DimensionValue;
+    right?: DimensionValue;
+    width?: DimensionValue;
+    height?: DimensionValue;
+    borderRadius?: number;
+  };
 }
 
 interface TutorialOverlayProps {
@@ -105,6 +114,22 @@ export default function TutorialOverlay({ isVisible, steps, onFinish, onExit }: 
 
   return (
     <View style={styles.overlay}>
+      {currentStep.spotlight && (
+        <View 
+          style={[
+            styles.spotlight, 
+            {
+              top: currentStep.spotlight.top,
+              bottom: currentStep.spotlight.bottom,
+              left: currentStep.spotlight.left,
+              right: currentStep.spotlight.right,
+              width: currentStep.spotlight.width,
+              height: currentStep.spotlight.height,
+              borderRadius: currentStep.spotlight.borderRadius ?? 8,
+            }
+          ]} 
+        />
+      )}
       <View style={[styles.card, cardPositionStyle]}>
         
         {renderArrow()}
@@ -243,5 +268,16 @@ const styles = StyleSheet.create({
     color: '#666',
     fontWeight: '600',
     fontSize: 16,
+  },
+  spotlight: {
+    position: 'absolute',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 5,
   },
 });

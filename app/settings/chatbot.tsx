@@ -46,6 +46,12 @@ export default function ChatbotScreen() {
           <Text style={styles.headerTitle}>AI Assistant</Text>
         </View>
 
+        <View style={styles.warningBanner}>
+          <Text style={styles.warningText}>
+            IMPORTANT: This is an AI assistant. While it can provide guidance, do not rely on it for critical safety or legal decisions. Always consult with professional resources.
+          </Text>
+        </View>
+
         <ScrollView style={styles.chatArea} contentContainerStyle={{ paddingBottom: 20 }}>
           {messages.map((msg, index) => (
             <View key={index} style={[styles.messageBubble, msg.role === 'user' ? styles.userBubble : styles.aiBubble]}>
@@ -87,5 +93,18 @@ const styles = StyleSheet.create({
   inputArea: { flexDirection: 'row', padding: 15, backgroundColor: '#222', alignItems: 'center' },
   input: { flex: 1, backgroundColor: '#111', color: '#fff', padding: 15, borderRadius: 25, fontSize: 16, marginRight: 10 },
   sendBtn: { backgroundColor: '#4A90E2', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 25 },
-  sendBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
+  sendBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  warningBanner: {
+    backgroundColor: '#3d2525',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#6e4444',
+  },
+  warningText: {
+    color: '#ff9b9b',
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    fontWeight: '500',
+  },
 });

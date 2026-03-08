@@ -1,5 +1,10 @@
 import * as Location from 'expo-location';
 
+export const WEST_VANCOUVER_COORDS = {
+  latitude: 49.3667,
+  longitude: -123.1665
+};
+
 // Define types for our internal weather state
 export interface DailyForecast {
   periodName: string;

@@ -7,24 +7,29 @@ export default function ResourcesScreen() {
 
   const resources = [
     {
-      title: 'Shelter Safe (Alberta)',
-      description: 'Find a safe shelter near you.',
-      url: 'https://sheltersafe.ca/alberta/'
+      title: 'VictimLinkBC',
+      description: '24/7 confidential, multilingual crisis support and referrals.',
+      url: 'tel:18005630808'
     },
     {
-      title: 'Assaulted Women’s Helpline',
-      description: 'Toll-free, 24-hour crisis line.',
-      url: 'tel:18668630511'
+      title: 'Vancouver Rape Relief & Women’s Shelter',
+      description: '24-hour crisis line and emergency shelter for women.',
+      url: 'tel:6042556344'
     },
     {
-      title: 'Kids Help Phone',
-      description: '24/7 e-mental health service offering free, confidential support.',
-      url: 'https://kidshelpphone.ca/'
+      title: 'Battered Women’s Support Services (BWSS)',
+      description: 'Support, advocacy, and crisis lines for women in Metro Vancouver.',
+      url: 'tel:18556871868'
     },
     {
-      title: 'Legal Aid Alberta',
-      description: 'Access to justice and legal representation.',
-      url: 'https://www.legalaid.ab.ca/'
+      title: 'Legal Aid BC (Vancouver)',
+      description: 'Free legal help for low-income residents for family and criminal law.',
+      url: 'https://legalaid.bc.ca/'
+    },
+    {
+      title: 'Canadian Human Trafficking Hotline',
+      description: 'Confidential 24/7 hotline for support and reporting.',
+      url: 'tel:18339001010'
     }
   ];
 
@@ -37,7 +42,7 @@ export default function ResourcesScreen() {
       </View>
       <ScrollView>
         <Text style={styles.header}>Help Resources</Text>
-        <Text style={styles.subtext}>Quick links to organizations that can assist you in Alberta and Canada.</Text>
+        <Text style={styles.subtext}>Quick links to organizations that can assist you in Vancouver and British Columbia.</Text>
 
         {resources.map((item, index) => (
           <TouchableOpacity 
