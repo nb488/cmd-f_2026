@@ -6,7 +6,7 @@ const { width } = Dimensions.get('window');
 
 export interface TutorialStep {
   title: string;
-  description: string;
+  description: string | React.ReactNode;
   top?: DimensionValue;
   bottom?: DimensionValue;
   left?: DimensionValue;
@@ -143,7 +143,13 @@ export default function TutorialOverlay({ isVisible, steps, onFinish, onExit }: 
         </View>
 
         {/* Content */}
-        <Text style={styles.description}>{currentStep.description}</Text>
+        {typeof currentStep.description === 'string' ? (
+          <Text style={styles.description}>{currentStep.description}</Text>
+        ) : (
+          <View style={styles.descriptionContainer}>
+            {currentStep.description}
+          </View>
+        )}
 
         {/* Indicators */}
         <View style={styles.indicatorContainer}>
@@ -220,6 +226,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     lineHeight: 24,
+  },
+  descriptionContainer: {
     marginBottom: 20,
   },
   indicatorContainer: {

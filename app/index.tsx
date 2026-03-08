@@ -97,9 +97,14 @@ export default function WeatherCoverScreen() {
     },
     {
       title: 'Emergency SOS',
-      description: activeFace === 'weather' 
-        ? 'Tapping this "Severe Weather Alert" card will immediately and silently send an SOS with your location to your saved emergency contacts. If no contacts are set, it defaults to 911.'
-        : 'Tapping this "Health Advisory" card will immediately and silently send an SOS with your location to your saved emergency contacts. If no contacts are set, it defaults to 911.',
+      description: (
+        <Text style={{ fontSize: 16, color: '#666', lineHeight: 24 }}>
+          {activeFace === 'weather' 
+            ? 'Tapping this "Severe Weather Alert" card will immediately and silently send an SOS with your location to your saved emergency contacts. '
+            : 'Tapping this "Health Advisory" card will immediately and silently send an SOS with your location to your saved emergency contacts. '}
+          If no contacts are set, it defaults to <Text style={{ fontWeight: 'bold' }}>calling 911</Text>.
+        </Text>
+      ),
       top: 380,
       arrow: {
         direction: 'up',

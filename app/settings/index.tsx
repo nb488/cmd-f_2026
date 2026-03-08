@@ -208,8 +208,8 @@ export default function SettingsScreen() {
         <Text style={styles.navBtnText}>Help Resources</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.navBtn, styles.exitBtn]} onPress={() => router.replace('/')}>
-        <Text style={styles.exitBtnText}>Exit Settings (Return to App)</Text>
+      <TouchableOpacity style={styles.navBtn} onPress={() => router.replace('/')}>
+        <Text style={styles.navBtnText}>Exit Settings (Return to App)</Text>
       </TouchableOpacity>
       
       <View style={styles.bottomSpacer} />
