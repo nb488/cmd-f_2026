@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as SecureStore from '../utils/storage';
@@ -9,11 +9,7 @@ export default function PinScreen() {
   const [savedPin, setSavedPin] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    checkPin();
-  }, []);
-
-  const checkPin = async () => {
+  const checkPin = useCallback(async () => {
     try {
       const storedPin = await SecureStore.getItemAsync('app_settings_pin');
       if (!storedPin) {
@@ -27,7 +23,11 @@ export default function PinScreen() {
       console.error(e);
       setLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    checkPin();
+  }, [checkPin]);
 
   const handlePress = (num: string) => {
     if (pin.length < 4) {
@@ -45,11 +45,7 @@ export default function PinScreen() {
     }
   };
 
-  const renderDot = (index: number) => {
-    return (
-      <View key={index} style={[styles.dot, pin.length > index && styles.dotFilled]} />
-    );
-  };
+
 
   if (loading) return null;
 
@@ -58,7 +54,9 @@ export default function PinScreen() {
       <Text style={styles.title}>Enter PIN</Text>
       
       <View style={styles.dotsContainer}>
-        {[0, 1, 2, 3].map(renderDot)}
+        {[0, 1, 2, 3].map((index) => (
+          <View key={index} style={[styles.dot, pin.length > index && styles.dotFilled]} />
+        ))}
       </View>
 
       <View style={styles.keypad}>

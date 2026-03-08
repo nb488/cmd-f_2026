@@ -9,6 +9,7 @@ export default function SettingsScreen() {
   const [pin, setPin] = useState('');
   const [contacts, setContacts] = useState('');
   const [message, setMessage] = useState('');
+  const [showTutorialText, setShowTutorialText] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -49,16 +50,30 @@ export default function SettingsScreen() {
       }
 
       Alert.alert('Success', 'Settings saved securely.');
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Failed to save settings.');
     }
+  };
+
+  const handleTutorialPress = () => {
+    setShowTutorialText(true);
+    setTimeout(() => {
+      setShowTutorialText(false);
+      router.replace({ pathname: '/', params: { showTutorial: 'true' } });
+    }, 800);
   };
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.headerContainer}>
-        <FontAwesome5 name="hand-paper" size={28} color="#fff" style={styles.headerIcon} />
-        <Text style={styles.header}>Settings</Text>
+        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+          <FontAwesome5 name="hand-paper" size={28} color="#fff" style={styles.headerIcon} />
+          <Text style={styles.header}>Settings</Text>
+        </View>
+        <TouchableOpacity onPress={handleTutorialPress} style={{flexDirection: 'row', alignItems: 'center'}}>
+          {showTutorialText && <Text style={{color: '#aaa', marginRight: 8, fontSize: 16}}>Tutorial</Text>}
+          <FontAwesome5 name="question-circle" size={24} color="#aaa" />
+        </TouchableOpacity>
       </View>
       <Text style={styles.subtext}>Configure your discreet emergency options here.</Text>
 
@@ -127,7 +142,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#111', padding: 20 },
-  headerContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 40 },
+  headerContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 40 },
   headerIcon: { marginRight: 15 },
   header: { fontSize: 32, color: '#fff', fontWeight: 'bold' },
   subtext: { color: '#aaa', marginBottom: 30, fontSize: 16, marginTop: 10 },

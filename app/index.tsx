@@ -1,15 +1,76 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Platform, ImageBackground } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import * as SMS from 'expo-sms';
 import * as SecureStore from '../utils/storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ImageBackground } from 'react-native';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import TutorialOverlay, { TutorialStep } from '../components/TutorialOverlay';
 
 export default function WeatherCoverScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const [isTutorialVisible, setIsTutorialVisible] = useState(false);
+
+  const checkTutorialStatus = useCallback(async () => {
+    if (params.showTutorial === 'true') {
+      setIsTutorialVisible(true);
+      return;
+    }
+
+    try {
+      const hasSeen = await SecureStore.getItemAsync('has_seen_tutorial');
+      if (hasSeen !== 'true') {
+        setIsTutorialVisible(true);
+      }
+    } catch (error) {
+      console.error('Error checking tutorial status:', error);
+    }
+  }, [params.showTutorial]);
+
+  useEffect(() => {
+    checkTutorialStatus();
+  }, [checkTutorialStatus]);
+
+  const handleTutorialComplete = async () => {
+    try {
+      await SecureStore.setItemAsync('has_seen_tutorial', 'true');
+      setIsTutorialVisible(false);
+    } catch (error) {
+      console.error('Error saving tutorial status:', error);
+      setIsTutorialVisible(false); // Hide anyway
+    }
+  };
+
+  const tutorialSteps: TutorialStep[] = [
+    {
+      title: 'Welcome to Wing',
+      description: 'On the surface, this app blends in perfectly. Currently, it looks like a weather app, but you can customize it with different \'faces\' like a music player or a period tracker.',
+      top: 100, // Show near the top middle
+    },
+    {
+      title: 'Emergency SOS',
+      description: 'Tapping this "Severe Weather Alert" card will immediately and silently send an SMS with your location to your saved emergency contacts.',
+      top: 300, // Near the SOS card
+      arrow: {
+        direction: 'left',
+        left: -40,
+        top: 20,
+      }
+    },
+    {
+      title: 'Hidden Settings',
+      description: 'This is the discreet app button. Tap the hand icon at the bottom right corner of the screen to enter your PIN and access the real settings, configure contacts, or use the hidden AI chatbot.',
+      bottom: 110, // Close to the bottom bar
+      right: '2%', // Pushed more towards the right border
+      arrow: {
+        direction: 'down-right',
+        bottom: -45,
+        right: 15,
+      }
+    }
+  ];
 
   const handleSettingsPress = async () => {
     try {
@@ -63,6 +124,12 @@ export default function WeatherCoverScreen() {
       style={styles.container}
       resizeMode="cover"
     >
+      <TutorialOverlay 
+        isVisible={isTutorialVisible} 
+        steps={tutorialSteps} 
+        onFinish={handleTutorialComplete}
+        onExit={handleTutorialComplete}
+      />
       <SafeAreaView style={{ flex: 1 }}>
         <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Header */}

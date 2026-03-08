@@ -5,7 +5,7 @@ export async function getItemAsync(key: string): Promise<string | null> {
   if (Platform.OS === 'web') {
     try {
       return localStorage.getItem(key);
-    } catch (e) {
+    } catch {
       return null;
     }
   } else {

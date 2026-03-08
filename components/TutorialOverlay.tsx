@@ -1,0 +1,247 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, DimensionValue } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+
+const { width } = Dimensions.get('window');
+
+export interface TutorialStep {
+  title: string;
+  description: string;
+  top?: DimensionValue;
+  bottom?: DimensionValue;
+  left?: DimensionValue;
+  right?: DimensionValue;
+  arrow?: {
+    direction: 'up' | 'down' | 'left' | 'right' | 'down-right';
+    top?: DimensionValue;
+    bottom?: DimensionValue;
+    left?: DimensionValue;
+    right?: DimensionValue;
+  };
+}
+
+interface TutorialOverlayProps {
+  isVisible: boolean;
+  steps: TutorialStep[];
+  onFinish: () => void;
+  onExit: () => void;
+}
+
+export default function TutorialOverlay({ isVisible, steps, onFinish, onExit }: TutorialOverlayProps) {
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+  if (!isVisible || steps.length === 0) return null;
+
+  const currentStep = steps[currentStepIndex];
+  const isFirstStep = currentStepIndex === 0;
+  const isLastStep = currentStepIndex === steps.length - 1;
+
+  const handleNext = () => {
+    if (isLastStep) {
+      setCurrentStepIndex(0);
+      onFinish();
+    } else {
+      setCurrentStepIndex(prev => prev + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (!isFirstStep) {
+      setCurrentStepIndex(prev => prev - 1);
+    }
+  };
+
+  const handleExit = () => {
+    setCurrentStepIndex(0);
+    onExit();
+  };
+
+  const cardPositionStyle = {
+    top: currentStep.top,
+    bottom: currentStep.bottom,
+    left: currentStep.left,
+    right: currentStep.right,
+  };
+
+  const renderArrow = () => {
+    if (!currentStep.arrow) return null;
+
+    const { direction, top, bottom, left, right } = currentStep.arrow;
+    
+    let iconName: any = 'arrow-up';
+    if (direction === 'down') iconName = 'arrow-down';
+    if (direction === 'left') iconName = 'arrow-back';
+    if (direction === 'right') iconName = 'arrow-forward';
+    if (direction === 'down-right') iconName = 'arrow-forward';
+
+    const arrowStyle: any = { position: 'absolute' };
+    if (top !== undefined) arrowStyle.top = top;
+    if (bottom !== undefined) arrowStyle.bottom = bottom;
+    
+    if (direction === 'down-right') {
+      arrowStyle.transform = [{ rotate: '45deg' }];
+    }
+
+    if (left !== undefined) {
+      arrowStyle.left = left;
+    } else if (right !== undefined) {
+      arrowStyle.right = right;
+    } else if (direction === 'up' || direction === 'down') {
+      arrowStyle.alignSelf = 'center';
+    }
+
+    if (direction === 'left' || direction === 'right') {
+       if (top === undefined && bottom === undefined) {
+          arrowStyle.alignSelf = 'center';
+       }
+    }
+
+    return (
+      <View style={arrowStyle}>
+        <Ionicons name={iconName} size={40} color="white" />
+      </View>
+    );
+  };
+
+  return (
+    <View style={styles.overlay}>
+      <View style={[styles.card, cardPositionStyle]}>
+        
+        {renderArrow()}
+
+        {/* Header */}
+        <View style={styles.header}>
+            <Text style={styles.title}>{currentStep.title}</Text>
+            <TouchableOpacity onPress={handleExit} style={styles.exitButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+        </View>
+
+        {/* Content */}
+        <Text style={styles.description}>{currentStep.description}</Text>
+
+        {/* Indicators */}
+        <View style={styles.indicatorContainer}>
+          {steps.map((_, index) => (
+            <React.Fragment key={index}>
+              <View 
+                style={[
+                  styles.dot, 
+                  index === currentStepIndex ? styles.activeDot : undefined
+                ]} 
+              />
+            </React.Fragment>
+          ))}
+        </View>
+
+        {/* Footer Navigation */}
+        <View style={styles.footer}>
+          {!isFirstStep ? (
+            <TouchableOpacity onPress={handlePrev} style={[styles.navButton, styles.secondaryButton]}>
+              <Text style={styles.secondaryButtonText}>Previous</Text>
+            </TouchableOpacity>
+          ) : <View style={{flex: 1}}/>}
+
+          <TouchableOpacity onPress={handleNext} style={[styles.navButton, styles.primaryButton]}>
+            <Text style={styles.primaryButtonText}>{isLastStep ? 'Finish' : 'Next'}</Text>
+          </TouchableOpacity>
+        </View>
+
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    zIndex: 1000,
+    elevation: 10,
+  },
+  card: {
+    position: 'absolute',
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    width: width * 0.85,
+    maxWidth: 400,
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    flex: 1,
+  },
+  exitButton: {
+      padding: 4,
+  },
+  description: {
+    fontSize: 16,
+    color: '#666',
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  indicatorContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ddd',
+    marginHorizontal: 4,
+  },
+  activeDot: {
+    backgroundColor: '#4A90E2',
+    width: 24,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  navButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButton: {
+    backgroundColor: '#4A90E2',
+  },
+  primaryButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  secondaryButton: {
+    backgroundColor: '#f0f0f0',
+  },
+  secondaryButtonText: {
+    color: '#666',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+});
