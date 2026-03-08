@@ -10,6 +10,8 @@ export default function SettingsScreen() {
   const [contacts, setContacts] = useState('');
   const [message, setMessage] = useState('');
   const [showTutorialText, setShowTutorialText] = useState(false);
+  const [activeFace, setActiveFace] = useState<'weather' | 'period'>('weather');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -19,6 +21,7 @@ export default function SettingsScreen() {
     const savedPin = await SecureStore.getItemAsync('app_settings_pin');
     const savedContacts = await SecureStore.getItemAsync('emergency_contacts');
     const savedMessage = await SecureStore.getItemAsync('emergency_message');
+    const savedFace = await SecureStore.getItemAsync('active_face');
 
     if (savedPin) setPin(savedPin);
     if (savedContacts) {
@@ -26,6 +29,8 @@ export default function SettingsScreen() {
       setContacts(parsed.join(', '));
     }
     if (savedMessage) setMessage(savedMessage);
+    if (savedFace === 'period') setActiveFace('period');
+    else setActiveFace('weather');
   };
 
   const saveSettings = async () => {
@@ -48,6 +53,8 @@ export default function SettingsScreen() {
       } else {
         await SecureStore.deleteItemAsync('emergency_message');
       }
+
+      await SecureStore.setItemAsync('active_face', activeFace);
 
       Alert.alert('Success', 'Settings saved securely.');
     } catch {
@@ -117,6 +124,70 @@ export default function SettingsScreen() {
         />
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.label}>App Appearance ("Face")</Text>
+        <Text style={styles.helper}>Choose what the app looks like on the surface.</Text>
+        
+        <TouchableOpacity 
+          style={styles.dropdownHeader} 
+          onPress={() => setIsDropdownOpen(!isDropdownOpen)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.dropdownHeaderText}>
+            {activeFace === 'weather' ? 'Weather Forecast' : 'Period Tracker'}
+          </Text>
+          <FontAwesome5 
+            name={isDropdownOpen ? "chevron-up" : "chevron-down"} 
+            size={14} 
+            color="#aaa" 
+          />
+        </TouchableOpacity>
+
+        {isDropdownOpen && (
+          <View style={styles.dropdownMenu}>
+            <TouchableOpacity 
+              style={[styles.dropdownItem, activeFace === 'weather' && styles.dropdownItemActive]} 
+              onPress={() => {
+                setActiveFace('weather');
+                setIsDropdownOpen(false);
+              }}
+            >
+              <Text style={[styles.dropdownItemText, activeFace === 'weather' && styles.dropdownItemTextActive]}>
+                Weather Forecast
+              </Text>
+              {activeFace === 'weather' && <FontAwesome5 name="check" size={12} color="#fff" />}
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.dropdownItem, activeFace === 'period' && styles.dropdownItemActive]} 
+              onPress={() => {
+                setActiveFace('period');
+                setIsDropdownOpen(false);
+              }}
+            >
+              <Text style={[styles.dropdownItemText, activeFace === 'period' && styles.dropdownItemTextActive]}>
+                Period Tracker
+              </Text>
+              {activeFace === 'period' && <FontAwesome5 name="check" size={12} color="#fff" />}
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.label}>SOS Instructions</Text>
+        <View style={styles.infoBox}>
+          <FontAwesome5 name="info-circle" size={18} color="#4A90E2" style={{ marginRight: 10 }} />
+          <Text style={styles.infoText}>
+            {activeFace === 'weather' 
+              ? 'To trigger an SOS in the Weather interface, tap the "Severe Weather Alert" card.' 
+              : 'To trigger an SOS in the Period Tracker interface, tap the "Health Advisory" card.'}
+            {"\n\n"}
+            Once tapped, a 5-second countdown will begin. You can cancel the SOS at any time during this countdown.
+          </Text>
+        </View>
+      </View>
+
       <TouchableOpacity style={styles.saveBtn} onPress={saveSettings}>
         <Text style={styles.saveBtnText}>Save Settings</Text>
       </TouchableOpacity>
@@ -158,5 +229,62 @@ const styles = StyleSheet.create({
   navBtnText: { color: '#fff', fontSize: 16 },
   exitBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#ff6b6b' },
   exitBtnText: { color: '#ff6b6b', fontSize: 16 },
+  dropdownHeader: {
+    backgroundColor: '#222',
+    padding: 15,
+    borderRadius: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  dropdownHeaderText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  dropdownMenu: {
+    backgroundColor: '#222',
+    marginTop: 5,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  dropdownItem: {
+    padding: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  dropdownItemActive: {
+    backgroundColor: 'rgba(74, 144, 226, 0.2)',
+  },
+  dropdownItemText: {
+    color: '#aaa',
+    fontSize: 16,
+  },
+  dropdownItemTextActive: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  infoBox: {
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    borderRadius: 10,
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(74, 144, 226, 0.3)',
+  },
+  infoText: {
+    color: '#ccc',
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
+  },
   bottomSpacer: { height: 50 }
 });

@@ -17,6 +17,8 @@ export default function WeatherCoverScreen() {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [isLoadingWeather, setIsLoadingWeather] = useState(true);
   const [activeFace, setActiveFace] = useState<'weather' | 'period'>('weather');
+  const [isCountingDown, setIsCountingDown] = useState(false);
+  const [countdown, setCountdown] = useState(5);
 
   const checkTutorialStatus = useCallback(async () => {
     if (params.showTutorial === 'true') {
@@ -65,6 +67,18 @@ export default function WeatherCoverScreen() {
     loadWeather();
   }, []);
 
+  useEffect(() => {
+    let timer: any;
+    if (isCountingDown && countdown > 0) {
+      timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+    } else if (isCountingDown && countdown === 0) {
+      triggerSOS();
+    }
+    return () => clearTimeout(timer);
+  }, [isCountingDown, countdown]);
+
   const handleTutorialComplete = async () => {
     try {
       await SecureStore.setItemAsync('has_seen_tutorial', 'true');
@@ -78,20 +92,28 @@ export default function WeatherCoverScreen() {
   const tutorialSteps: TutorialStep[] = [
     {
       title: 'Welcome to Wing',
-      description: 'On the surface, this app blends in perfectly. Currently, it looks like a weather app, but you can customize it with different \'faces\' like a music player or a period tracker.',
-      top: 100, // Show near the top middle
+      description: `On the surface, this app blends in perfectly. Currently, it looks like a ${activeFace === 'weather' ? 'weather app' : 'period tracker'}, but you can customize it with different 'faces' in settings.`,
+      top: 100,
     },
     {
       title: 'Emergency SOS',
-      description: 'Tapping this "Severe Weather Alert" card will immediately and silently send an SMS with your location to your saved emergency contacts.',
-      top: 380, // Positioned below the SOS card
+      description: activeFace === 'weather' 
+        ? 'Tapping this "Severe Weather Alert" card will immediately and silently send an SOS with your location to your saved emergency contacts.'
+        : 'Tapping this "Health Advisory" card will immediately and silently send an SOS with your location to your saved emergency contacts.',
+      top: 380,
       arrow: {
         direction: 'up',
         top: -45,
         left: '45%',
       },
-      spotlight: {
+      spotlight: activeFace === 'weather' ? {
         top: 300, 
+        left: '3%',
+        width: '94%',
+        height: 65,
+        borderRadius: 12,
+      } : {
+        top: 480, // Positioned for periodSOSCard
         left: '3%',
         width: '94%',
         height: 65,
@@ -100,16 +122,16 @@ export default function WeatherCoverScreen() {
     },
     {
       title: 'Hidden Settings',
-      description: 'This is the discreet app button. Tap the hand icon at the bottom right corner of the screen to enter your PIN and access the real settings, configure contacts, or use the hidden AI chatbot.',
-      bottom: 90, // Lowered closer to the button
+      description: 'This is the discreet app button. Tap the hand icon at the bottom right corner of the screen to enter your PIN and access the real settings.',
+      bottom: 90,
       right: '2%',
       arrow: {
         direction: 'down-right',
         bottom: -45,
-        right: 15, // Adjusted slightly for diagonal
+        right: 15,
       },
       spotlight: {
-        bottom: 20, // Positioned in the bottom bar
+        bottom: 20,
         right: 15,
         width: 50,
         height: 50,
@@ -132,7 +154,18 @@ export default function WeatherCoverScreen() {
     }
   };
 
-  const handleSOSPress = async () => {
+  const handleSOSPress = () => {
+    setIsCountingDown(true);
+    setCountdown(5);
+  };
+
+  const handleCancelSOS = () => {
+    setIsCountingDown(false);
+    setCountdown(5);
+  };
+
+  const triggerSOS = async () => {
+    setIsCountingDown(false);
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
@@ -351,14 +384,25 @@ export default function WeatherCoverScreen() {
                 </LinearGradient>
             </View>
 
-            {/* SOS Disguised as "Log Symptoms" */}
-            <TouchableOpacity onPress={handleSOSPress} activeOpacity={0.8} style={styles.logSymptomsBtn}>
+            {/* Non-functional Edit Dates Button */}
+            <TouchableOpacity activeOpacity={0.8} style={styles.logSymptomsBtn}>
                 <LinearGradient
-                  colors={['#D6336C', '#C2255C']}
+                  colors={['#FFB7C5', '#FFD1DC']}
                   style={styles.logSymptomsGradient}
                 >
-                  <Text style={styles.logSymptomsText}>Log Symptoms</Text>
+                  <Text style={[styles.logSymptomsText, { color: '#D6336C' }]}>Edit Period Dates</Text>
                 </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Separate SOS Trigger */}
+            <TouchableOpacity onPress={handleSOSPress} activeOpacity={0.8} style={styles.periodSOSCard}>
+              <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                <Ionicons name="medical" size={20} color="#D6336C" style={{marginRight: 10}} />
+                <View>
+                  <Text style={styles.periodSOSTitle}>Health Advisory</Text>
+                  <Text style={styles.periodSOSSub}>Cycle regularity and wellness tips</Text>
+                </View>
+              </View>
             </TouchableOpacity>
 
             {/* Cycle Milestones */}
@@ -400,6 +444,25 @@ export default function WeatherCoverScreen() {
             <FontAwesome5 name="hand-rock" size={20} color={activeFace === 'weather' ? "white" : "#D6336C"} />
           </TouchableOpacity>
         </View>
+
+        {isCountingDown && (
+          <View style={styles.countdownOverlay}>
+            <LinearGradient
+              colors={activeFace === 'weather' ? ['rgba(15, 80, 150, 0.95)', 'rgba(0, 50, 120, 0.98)'] : ['rgba(255, 245, 247, 0.95)', 'rgba(255, 230, 235, 0.98)']}
+              style={styles.countdownGradient}
+            >
+              <Text style={[styles.countdownTitle, activeFace === 'period' && { color: '#D6336C' }]}>Sending SOS...</Text>
+              <View style={[styles.countdownCircle, activeFace === 'period' && { borderColor: '#D6336C' }]}>
+                <Text style={[styles.countdownNumber, activeFace === 'period' && { color: '#D6336C' }]}>{countdown}</Text>
+              </View>
+              <Text style={[styles.countdownSubtext, activeFace === 'period' && { color: '#868E96' }]}>Your emergency contacts will be notified in {countdown} seconds.</Text>
+              
+              <TouchableOpacity onPress={handleCancelSOS} style={styles.cancelSOSBtn}>
+                <Text style={styles.cancelSOSText}>CANCEL</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        )}
       </SafeAreaView>
     </ImageBackground>
   );
@@ -762,5 +825,78 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: '#FFD1DC',
     marginHorizontal: 3,
+  },
+  periodSOSCard: {
+    backgroundColor: 'rgba(214, 51, 108, 0.05)',
+    borderRadius: 15,
+    marginHorizontal: 20,
+    padding: 15,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(214, 51, 108, 0.1)',
+  },
+  periodSOSTitle: {
+    color: '#D6336C',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  periodSOSSub: {
+    color: '#868E96',
+    fontSize: 13,
+  },
+  countdownOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+  },
+  countdownGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  countdownTitle: {
+    fontSize: 28,
+    color: '#fff',
+    fontWeight: 'bold',
+    marginBottom: 40,
+  },
+  countdownCircle: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    borderWidth: 8,
+    borderColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  countdownNumber: {
+    fontSize: 72,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  countdownSubtext: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    marginBottom: 60,
+    paddingHorizontal: 40,
+  },
+  cancelSOSBtn: {
+    backgroundColor: '#ff6b6b',
+    paddingHorizontal: 40,
+    paddingVertical: 15,
+    borderRadius: 30,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+  },
+  cancelSOSText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    letterSpacing: 1,
   }
 });
