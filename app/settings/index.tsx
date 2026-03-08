@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert, Image, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as SecureStore from '../../utils/storage';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -11,6 +11,7 @@ export default function SettingsScreen() {
   const [message, setMessage] = useState('');
   const [showTutorialText, setShowTutorialText] = useState(false);
   const [activeFace, setActiveFace] = useState<'weather' | 'period'>('weather');
+  const [isHovered, setIsHovered] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
@@ -70,19 +71,27 @@ export default function SettingsScreen() {
     }, 800);
   };
 
+  // Placeholder for handleLogout, assuming it will be defined elsewhere or added later
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Logout functionality not yet implemented.');
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: '#1A0B2E' }}>
+      <ScrollView style={styles.container}>
       <View style={styles.headerContainer}>
-        <View style={{flexDirection: 'row', alignItems: 'center'}}>
-          <FontAwesome5 name="hand-paper" size={28} color="#fff" style={styles.headerIcon} />
-          <Text style={styles.header}>Settings</Text>
-        </View>
-        <TouchableOpacity onPress={handleTutorialPress} style={{flexDirection: 'row', alignItems: 'center'}}>
-          {showTutorialText && <Text style={{color: '#aaa', marginRight: 8, fontSize: 16}}>Tutorial</Text>}
-          <FontAwesome5 name="question-circle" size={24} color="#aaa" />
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={28} color="#E0BBE4" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Settings</Text>
+        <TouchableOpacity onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={24} color="#E0BBE4" />
         </TouchableOpacity>
       </View>
-      <Text style={styles.subtext}>Configure your discreet emergency options here.</Text>
+
+      <Text style={styles.helper}>
+        Manage your safety preferences and app appearance discreetly.
+      </Text>
 
       <View style={styles.section}>
         <Text style={styles.label}>Access PIN (4 Digits)</Text>
@@ -113,14 +122,13 @@ export default function SettingsScreen() {
 
       <View style={styles.section}>
         <Text style={styles.label}>SOS Message</Text>
-        <TextInput 
-          style={[styles.input, styles.textArea]} 
-          multiline
-          numberOfLines={4}
+        <TextInput
+          style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
           value={message}
           onChangeText={setMessage}
-          placeholder="I am in danger and need help."
-          placeholderTextColor="#666"
+          placeholder="Enter your emergency message..."
+          placeholderTextColor="#957DAD"
+          multiline
         />
       </View>
 
@@ -179,9 +187,11 @@ export default function SettingsScreen() {
         <View style={styles.infoBox}>
           <FontAwesome5 name="info-circle" size={18} color="#4A90E2" style={{ marginRight: 10 }} />
           <Text style={styles.infoText}>
-            {activeFace === 'weather' 
-              ? 'To trigger an SOS in the Weather interface, tap the "Severe Weather Alert" card.' 
-              : 'To trigger an SOS in the Period Tracker interface, tap the "Health Advisory" card.'}
+            {activeFace === 'weather' ? (
+              <Text>To trigger an SOS in the Weather interface, tap the <Text style={{ fontWeight: 'bold' }}>"Severe Weather Alert"</Text> card.</Text>
+            ) : (
+              <Text>To trigger an SOS in the Period Tracker interface, tap the <Text style={{ fontWeight: 'bold' }}>"Health Advisory"</Text> card.</Text>
+            )}
             {"\n\n"}
             Once tapped, a 5-second countdown will begin. You can cancel the SOS at any time during this countdown.
           </Text>
@@ -192,14 +202,10 @@ export default function SettingsScreen() {
         <Text style={styles.saveBtnText}>Save Settings</Text>
       </TouchableOpacity>
 
-      <View style={styles.divider} />
+      <View style={{ height: 1, backgroundColor: '#4B3F72', marginVertical: 30 }} />
 
       <TouchableOpacity style={styles.navBtn} onPress={() => router.push('/settings/resources')}>
         <Text style={styles.navBtnText}>Help Resources</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.navBtn} onPress={() => router.push('/settings/chatbot')}>
-        <Text style={styles.navBtnText}>AI Assistant</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={[styles.navBtn, styles.exitBtn]} onPress={() => router.replace('/')}>
@@ -208,36 +214,120 @@ export default function SettingsScreen() {
       
       <View style={styles.bottomSpacer} />
     </ScrollView>
-  );
+
+    <View style={styles.floatingContainer}>
+      {isHovered && (
+        <View style={styles.tooltip}>
+          <Text style={styles.tooltipText}>Virtual Assistant</Text>
+        </View>
+      )}
+      <Pressable 
+        style={({ pressed }) => [
+          styles.floatingChatbotBtn,
+          { opacity: pressed ? 0.6 : 1 }
+        ]}
+        onPress={() => router.push('/settings/chatbot')}
+        // @ts-ignore - Web-only event
+        onMouseEnter={() => setIsHovered(true)}
+        // @ts-ignore - Web-only event
+        onMouseLeave={() => setIsHovered(false)}
+        onPressIn={() => setIsHovered(true)}
+        onPressOut={() => setIsHovered(false)}
+      >
+        <Image 
+          source={require('../../assets/images/wing_logo_v5.png')} 
+          style={styles.chatbotIcon}
+          resizeMode="contain"
+        />
+      </Pressable>
+    </View>
+  </View>
+);
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#111', padding: 20 },
-  headerContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 40 },
-  headerIcon: { marginRight: 15 },
-  header: { fontSize: 32, color: '#fff', fontWeight: 'bold' },
-  subtext: { color: '#aaa', marginBottom: 30, fontSize: 16, marginTop: 10 },
-  section: { marginBottom: 25 },
-  label: { color: '#fff', fontSize: 18, marginBottom: 8 },
-  helper: { color: '#888', fontSize: 12, marginBottom: 8 },
-  input: { backgroundColor: '#222', color: '#fff', padding: 15, borderRadius: 10, fontSize: 16 },
-  textArea: { height: 100, textAlignVertical: 'top' },
-  saveBtn: { backgroundColor: '#4A90E2', padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 10 },
-  saveBtnText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  divider: { height: 1, backgroundColor: '#333', marginVertical: 30 },
-  navBtn: { backgroundColor: '#333', padding: 15, borderRadius: 10, alignItems: 'center', marginBottom: 15 },
-  navBtnText: { color: '#fff', fontSize: 16 },
-  exitBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#ff6b6b' },
-  exitBtnText: { color: '#ff6b6b', fontSize: 16 },
-  dropdownHeader: {
-    backgroundColor: '#222',
+  container: {
+    flex: 1,
+    backgroundColor: '#1A0B2E', // Deep dark purple
+    padding: 20,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 40,
+    marginBottom: 30,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#E0BBE4', // Light purple
+  },
+  section: {
+    marginBottom: 25,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  helper: {
+    fontSize: 13,
+    color: '#957DAD', // Muted light purple
+    marginBottom: 10,
+  },
+  input: {
+    backgroundColor: '#2D1B44', // Darker purple for inputs
+    borderRadius: 12,
     padding: 15,
-    borderRadius: 10,
+    color: '#fff',
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#4B3F72', // Medium purple border
+  },
+  saveBtn: {
+    backgroundColor: '#E0BBE4', // Light purple button
+    borderRadius: 12,
+    padding: 18,
+    alignItems: 'center',
+    marginTop: 10,
+    shadowColor: '#E0BBE4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  saveBtnText: {
+    color: '#1A0B2E', // Dark purple text for contrast
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  navRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 30,
+  },
+  navBtn: {
+    flex: 0.48,
+    backgroundColor: 'rgba(224, 187, 228, 0.15)', // Subtle purple tint
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(224, 187, 228, 0.3)',
+  },
+  navBtnText: { color: '#E0BBE4', fontSize: 16, fontWeight: '600' },
+  exitBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#FFB7C5' },
+  exitBtnText: { color: '#FFB7C5', fontSize: 16, fontWeight: '600' },
+  dropdownHeader: {
+    backgroundColor: '#2D1B44',
+    padding: 15,
+    borderRadius: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: '#4B3F72',
   },
   dropdownHeaderText: {
     color: '#fff',
@@ -245,12 +335,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   dropdownMenu: {
-    backgroundColor: '#222',
+    backgroundColor: '#2D1B44',
     marginTop: 5,
-    borderRadius: 10,
+    borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: '#4B3F72',
   },
   dropdownItem: {
     padding: 15,
@@ -258,13 +348,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: '#4B3F72',
   },
   dropdownItemActive: {
-    backgroundColor: 'rgba(74, 144, 226, 0.2)',
+    backgroundColor: 'rgba(224, 187, 228, 0.1)',
   },
   dropdownItemText: {
-    color: '#aaa',
+    color: '#957DAD',
     fontSize: 16,
   },
   dropdownItemTextActive: {
@@ -272,19 +362,56 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   infoBox: {
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-    borderRadius: 10,
+    backgroundColor: 'rgba(224, 187, 228, 0.05)',
+    borderRadius: 12,
     padding: 15,
     flexDirection: 'row',
     alignItems: 'flex-start',
     borderWidth: 1,
-    borderColor: 'rgba(74, 144, 226, 0.3)',
+    borderColor: 'rgba(224, 187, 228, 0.2)',
   },
   infoText: {
-    color: '#ccc',
+    color: '#E0BBE4',
     fontSize: 14,
     lineHeight: 20,
     flex: 1,
+    opacity: 0.8,
   },
-  bottomSpacer: { height: 50 }
+  bottomSpacer: { height: 100 },
+  floatingContainer: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  floatingChatbotBtn: {
+    width: 200,
+    height: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tooltip: {
+    backgroundColor: '#3D1B5D',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E0BBE4',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  tooltipText: {
+    color: '#E0BBE4',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  chatbotIcon: {
+    width: '100%',
+    height: '100%',
+  }
 });

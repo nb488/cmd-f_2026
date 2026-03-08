@@ -216,7 +216,7 @@ export default function WeatherCoverScreen() {
             <View style={styles.header}>
               <Text style={styles.city}>West Vancouver</Text>
               <Text style={styles.temperature}>{weatherData ? Math.round(weatherData.temperature) : '--'}°</Text>
-              <Text style={styles.condition}>{weatherData?.condition || 'Loading conditions'}</Text>
+              <Text style={styles.condition}>Sunny</Text>
               <Text style={styles.highLow}>H:{weatherData?.high !== undefined ? Math.round(weatherData.high) : '--'}°  L:{weatherData?.low !== undefined ? Math.round(weatherData.low) : '--'}°</Text>
             </View>
 
