@@ -6,7 +6,7 @@ const { width } = Dimensions.get('window');
 
 export interface TutorialStep {
   title: string;
-  description: string;
+  description: string | React.ReactNode;
   top?: DimensionValue;
   bottom?: DimensionValue;
   left?: DimensionValue;
@@ -17,6 +17,15 @@ export interface TutorialStep {
     bottom?: DimensionValue;
     left?: DimensionValue;
     right?: DimensionValue;
+  };
+  spotlight?: {
+    top?: DimensionValue;
+    bottom?: DimensionValue;
+    left?: DimensionValue;
+    right?: DimensionValue;
+    width?: DimensionValue;
+    height?: DimensionValue;
+    borderRadius?: number;
   };
 }
 
@@ -105,6 +114,22 @@ export default function TutorialOverlay({ isVisible, steps, onFinish, onExit }: 
 
   return (
     <View style={styles.overlay}>
+      {currentStep.spotlight && (
+        <View 
+          style={[
+            styles.spotlight, 
+            {
+              top: currentStep.spotlight.top,
+              bottom: currentStep.spotlight.bottom,
+              left: currentStep.spotlight.left,
+              right: currentStep.spotlight.right,
+              width: currentStep.spotlight.width,
+              height: currentStep.spotlight.height,
+              borderRadius: currentStep.spotlight.borderRadius ?? 8,
+            }
+          ]} 
+        />
+      )}
       <View style={[styles.card, cardPositionStyle]}>
         
         {renderArrow()}
@@ -118,7 +143,13 @@ export default function TutorialOverlay({ isVisible, steps, onFinish, onExit }: 
         </View>
 
         {/* Content */}
-        <Text style={styles.description}>{currentStep.description}</Text>
+        {typeof currentStep.description === 'string' ? (
+          <Text style={styles.description}>{currentStep.description}</Text>
+        ) : (
+          <View style={styles.descriptionContainer}>
+            {currentStep.description}
+          </View>
+        )}
 
         {/* Indicators */}
         <View style={styles.indicatorContainer}>
@@ -195,6 +226,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     lineHeight: 24,
+  },
+  descriptionContainer: {
     marginBottom: 20,
   },
   indicatorContainer: {
@@ -243,5 +276,16 @@ const styles = StyleSheet.create({
     color: '#666',
     fontWeight: '600',
     fontSize: 16,
+  },
+  spotlight: {
+    position: 'absolute',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 5,
   },
 });

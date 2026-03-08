@@ -1,7 +1,11 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Markdown from 'react-native-markdown-display';
+import * as SecureStore from '../../utils/storage';
 
 const SYSTEM_PROMPT = `You are a compassionate safety planning assistant for people experiencing domestic abuse. 
 Your role is to help users create personalized safety plans. Focus on:
@@ -13,6 +17,37 @@ Your role is to help users create personalized safety plans. Focus on:
 Always be empathetic, non-judgmental, and prioritize the user's immediate safety.
 Keep responses concise and actionable. Remind users to clear browsing history if their device may be monitored.`;
 
+const THEMES = {
+  weather: {
+    bg: ['#4A90E2', '#1A0B2E'],
+    header: 'rgba(255, 255, 255, 0.1)',
+    headerText: '#FFFFFF',
+    userBubble: 'rgba(255, 255, 255, 0.2)',
+    aiBubble: 'rgba(255, 255, 255, 0.15)',
+    bubbleBorder: 'rgba(255, 255, 255, 0.2)',
+    text: '#FFFFFF',
+    inputBg: 'rgba(255, 255, 255, 0.1)',
+    inputBorder: 'rgba(255, 255, 255, 0.2)',
+    button: '#FFFFFF',
+    buttonText: '#4A90E2',
+    icon: '#FFFFFF'
+  },
+  period: {
+    bg: ['#FFF5F7', '#FFF5F7'],
+    header: '#FFFFFF',
+    headerText: '#D6336C',
+    userBubble: '#D6336C',
+    aiBubble: '#FFFFFF',
+    bubbleBorder: 'rgba(214, 51, 108, 0.1)',
+    text: '#495057',
+    inputBg: '#FFFFFF',
+    inputBorder: 'rgba(214, 51, 108, 0.15)',
+    button: '#D6336C',
+    buttonText: '#FFFFFF',
+    icon: '#D6336C'
+  }
+};
+
 export default function ChatbotScreen() {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -21,6 +56,20 @@ export default function ChatbotScreen() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [activeFace, setActiveFace] = useState<'weather' | 'period'>('weather');
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadFace = async () => {
+        const savedFace = await SecureStore.getItemAsync('active_face');
+        if (savedFace === 'period') setActiveFace('period');
+        else setActiveFace('weather');
+      };
+      loadFace();
+    }, [])
+  );
+
+  const theme = THEMES[activeFace];
 
   const PREDEFINED_OPTIONS = [
     "I need help with my finances",
@@ -107,96 +156,177 @@ export default function ChatbotScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>&lt; Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>AI Assistant</Text>
-        </View>
-
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.chatArea}
-          contentContainerStyle={{ paddingBottom: 20 }}
-          onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-        >
-          {messages.map((msg, index) => (
-            msg.text && msg.role !== 'ai' || (msg.role === 'ai' && msg.text !== '' && !msg.text.startsWith('[DEBUG')) ? (
-              <View key={index} style={[styles.messageBubble, msg.role === 'user' ? styles.userBubble : styles.aiBubble]}>
-                {msg.role === 'user' ? (
-                  <Text style={styles.messageText}>{msg.text}</Text>
-                ) : (
-                  <Markdown style={markdownStyles}>{msg.text}</Markdown>
-                )}
-              </View>
-            ) : msg.text && msg.text.startsWith('[DEBUG') ? (
-              <View key={index} style={[styles.messageBubble, styles.aiBubble]}>
-                <Text style={styles.messageText}>{msg.text}</Text>
-              </View>
-            ) : (
-              // Loading bubble
-              <View key={index} style={[styles.messageBubble, styles.aiBubble]}>
-                <Text style={styles.messageText}>...</Text>
-              </View>
-            )
-          ))}
-        </ScrollView>
-
-        <View style={styles.optionsWrapper}>
-          {PREDEFINED_OPTIONS.map((option, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[styles.optionBtn, isLoading && styles.optionBtnDisabled]}
-              onPress={() => handleOptionSelect(option)}
-              disabled={isLoading}
-            >
-              <Text style={styles.optionBtnText}>{option}</Text>
+    <LinearGradient colors={theme.bg as [string, string, ...string[]]} style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={[styles.header, { backgroundColor: theme.header, borderBottomColor: theme.bubbleBorder }]}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <Ionicons name="chevron-back" size={28} color={theme.icon} />
             </TouchableOpacity>
-          ))}
-        </View>
+            <Text style={[styles.headerTitle, { color: theme.headerText }]}>AI Assistant</Text>
+          </View>
 
-        <View style={styles.inputArea}>
-          <TextInput
-            style={styles.input}
-            value={input}
-            onChangeText={setInput}
-            placeholder="Ask for advice..."
-            placeholderTextColor="#666"
-            onSubmitEditing={handleSend}
-            editable={!isLoading}
-          />
-          <TouchableOpacity style={[styles.sendBtn, isLoading && styles.sendBtnDisabled]} onPress={handleSend} disabled={isLoading}>
-            <Text style={styles.sendBtnText}>{isLoading ? '...' : 'Send'}</Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          <View style={styles.warningBanner}>
+            <Text style={styles.warningText}>
+              IMPORTANT: This is an AI assistant. While it can provide guidance, do not rely on it for critical safety or legal decisions. Always consult with professional resources.
+            </Text>
+          </View>
+
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.chatArea}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+          >
+            {messages.map((msg, index) => (
+              msg.text && msg.role !== 'ai' || (msg.role === 'ai' && msg.text !== '' && !msg.text.startsWith('[DEBUG')) ? (
+                <View
+                  key={index}
+                  style={[
+                    styles.messageBubble,
+                    msg.role === 'user'
+                      ? [styles.userBubble, { backgroundColor: theme.userBubble, borderColor: theme.bubbleBorder }]
+                      : [styles.aiBubble, { backgroundColor: theme.aiBubble, borderColor: theme.bubbleBorder }]
+                  ]}
+                >
+                  {msg.role === 'user' ? (
+                    <Text style={[styles.messageText, { color: msg.role === 'user' ? '#fff' : activeFace === 'weather' ? '#fff' : '#495057' }]}>
+                      {msg.text}
+                    </Text>
+                  ) : (
+                    <Markdown style={Object.assign({}, markdownStyles, { body: { color: activeFace === 'weather' ? '#fff' : '#495057', fontSize: 16, lineHeight: 24 } })}>{msg.text}</Markdown>
+                  )}
+                </View>
+              ) : msg.text && msg.text.startsWith('[DEBUG') ? (
+                <View key={index} style={[styles.messageBubble, styles.aiBubble, { backgroundColor: theme.aiBubble, borderColor: theme.bubbleBorder }]}>
+                  <Text style={[styles.messageText, { color: activeFace === 'weather' ? '#fff' : '#495057' }]}>{msg.text}</Text>
+                </View>
+              ) : (
+                // Loading bubble
+                <View key={index} style={[styles.messageBubble, styles.aiBubble, { backgroundColor: theme.aiBubble, borderColor: theme.bubbleBorder }]}>
+                  <Text style={[styles.messageText, { color: activeFace === 'weather' ? '#fff' : '#495057' }]}>...</Text>
+                </View>
+              )
+            ))}
+          </ScrollView>
+
+          <View style={[styles.optionsWrapper, { backgroundColor: 'transparent', borderTopColor: theme.bubbleBorder, borderTopWidth: 1 }]}>
+            {PREDEFINED_OPTIONS.map((option, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[styles.optionBtn, isLoading && styles.optionBtnDisabled, { backgroundColor: theme.aiBubble, borderColor: theme.bubbleBorder }]}
+                onPress={() => handleOptionSelect(option)}
+                disabled={isLoading}
+              >
+                <Text style={[styles.optionBtnText, { color: theme.buttonText }]}>{option}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={[styles.inputArea, { backgroundColor: theme.header, borderTopColor: theme.bubbleBorder }]}>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: activeFace === 'weather' ? '#fff' : '#495057' }]}
+              value={input}
+              onChangeText={setInput}
+              placeholder="Ask for advice..."
+              placeholderTextColor={activeFace === 'weather' ? 'rgba(255,255,255,0.4)' : '#ADB5BD'}
+              onSubmitEditing={handleSend}
+              editable={!isLoading}
+            />
+            <TouchableOpacity style={[styles.sendBtn, isLoading && styles.sendBtnDisabled, { backgroundColor: theme.button, shadowColor: theme.button }]} onPress={handleSend} disabled={isLoading}>
+              <Text style={[styles.sendBtnText, { color: theme.buttonText }]}>{isLoading ? '...' : 'Send'}</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#111' },
-  container: { flex: 1, backgroundColor: '#111' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingTop: 10, paddingBottom: 15, paddingHorizontal: 20, backgroundColor: '#222' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+    borderBottomWidth: 1.5,
+  },
   backBtn: { padding: 10, marginLeft: -10 },
-  backBtnText: { color: '#4A90E2', fontSize: 18 },
-  headerTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginLeft: 10 },
-  chatArea: { flex: 1, padding: 20 },
-  messageBubble: { maxWidth: '80%', padding: 15, borderRadius: 20, marginBottom: 15 },
-  userBubble: { alignSelf: 'flex-end', backgroundColor: '#4A90E2', borderBottomRightRadius: 5 },
-  aiBubble: { alignSelf: 'flex-start', backgroundColor: '#333', borderBottomLeftRadius: 5 },
-  messageText: { color: '#fff', fontSize: 16, lineHeight: 24 },
-  optionsWrapper: { flexDirection: 'row', flexWrap: 'wrap', padding: 10, backgroundColor: '#222', gap: 10, justifyContent: 'center' },
-  optionBtn: { backgroundColor: '#333', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 20, borderWidth: 1, borderColor: '#4A90E2' },
+  headerTitle: {
+    fontSize: 30,
+    fontWeight: '700',
+    marginLeft: 10,
+    letterSpacing: -1,
+  },
+  chatArea: { flex: 1, padding: 24 },
+  messageBubble: {
+    maxWidth: '85%',
+    padding: 18,
+    borderRadius: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    borderWidth: 1,
+  },
+  userBubble: {
+    alignSelf: 'flex-end',
+    borderBottomRightRadius: 4,
+  },
+  aiBubble: {
+    alignSelf: 'flex-start',
+    borderBottomLeftRadius: 4,
+  },
+  messageText: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '300',
+  },
+  optionsWrapper: { flexDirection: 'row', flexWrap: 'wrap', padding: 10, gap: 10, justifyContent: 'center' },
+  optionBtn: { paddingVertical: 10, paddingHorizontal: 15, borderRadius: 20, borderWidth: 1 },
   optionBtnDisabled: { opacity: 0.5 },
-  optionBtnText: { color: '#4A90E2', fontSize: 14, textAlign: 'center', fontWeight: '500' },
-  inputArea: { flexDirection: 'row', padding: 15, backgroundColor: '#222', alignItems: 'center' },
-  input: { flex: 1, backgroundColor: '#111', color: '#fff', padding: 15, borderRadius: 25, fontSize: 16, marginRight: 10 },
-  sendBtn: { backgroundColor: '#4A90E2', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 25 },
-  sendBtnDisabled: { backgroundColor: '#2a5a8a', opacity: 0.5 },
-  sendBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
+  optionBtnText: { fontSize: 14, textAlign: 'center', fontWeight: '500' },
+  inputArea: {
+    flexDirection: 'row',
+    padding: 20,
+    alignItems: 'center',
+    borderTopWidth: 1.5,
+  },
+  input: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 25,
+    fontSize: 16,
+    marginRight: 10,
+    borderWidth: 1.5,
+    fontWeight: '400',
+  },
+  sendBtn: {
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+  },
+  sendBtnDisabled: { opacity: 0.5 },
+  sendBtnText: { fontWeight: '700', fontSize: 16 },
+  warningBanner: {
+    backgroundColor: 'rgba(61, 37, 37, 0.6)',
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(110, 68, 68, 0.4)',
+  },
+  warningText: {
+    color: '#ff9b9b',
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    fontWeight: '500',
+    opacity: 0.9,
+  },
 });
 
 const markdownStyles = StyleSheet.create({
