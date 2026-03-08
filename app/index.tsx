@@ -288,8 +288,12 @@ export default function WeatherCoverScreen() {
                        return (
                           <View key={`sun-${idx}`} style={styles.hourlyItem}>
                             <Text style={styles.hourlyTime}>{timeString}</Text>
-                            <WeatherIcon name={item.iconName} size={28} />
-                            <Text style={styles.hourlyTemp}>{item.label}</Text>
+                            <View style={styles.hourlyIconContainer}>
+                              <WeatherIcon name={item.iconName} size={28} />
+                            </View>
+                            <View style={styles.hourlyTempContainer}>
+                              <Text style={styles.hourlyTemp}>{item.label}</Text>
+                            </View>
                           </View>
                        );
                     }
@@ -298,8 +302,12 @@ export default function WeatherCoverScreen() {
                     return (
                       <View key={`hourly-${idx}`} style={styles.hourlyItem}>
                         <Text style={styles.hourlyTime}>{timeString}</Text>
-                        <WeatherIcon name={iconName} size={28} />
-                        <Text style={styles.hourlyTemp}>{Math.round(item.temperature)}°</Text>
+                        <View style={styles.hourlyIconContainer}>
+                          <WeatherIcon name={iconName} size={28} />
+                        </View>
+                        <View style={styles.hourlyTempContainer}>
+                          <Text style={styles.hourlyTemp}>{Math.round(item.temperature)}°</Text>
+                        </View>
                       </View>
                     );
                   });
@@ -549,7 +557,19 @@ const styles = StyleSheet.create({
   },
   hourlyItem: {
     alignItems: 'center',
-    marginRight: 25,
+    width: 70,
+    marginRight: 10,
+  },
+  hourlyIconContainer: {
+    height: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  hourlyTempContainer: {
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   hourlyTime: {
     color: '#fff',
