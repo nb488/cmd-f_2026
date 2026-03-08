@@ -1,9 +1,50 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Platform, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
+import * as SecureStore from '../../utils/storage';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+
+const THEMES = {
+  weather: {
+    bg: ['#4A90E2', '#1A0B2E'],
+    headerText: '#FFFFFF',
+    subtext: 'rgba(255,255,255,0.8)',
+    card: 'rgba(255, 255, 255, 0.1)',
+    cardBorder: 'rgba(255, 255, 255, 0.2)',
+    title: '#FFFFFF',
+    desc: 'rgba(255,255,255,0.9)',
+    icon: '#FFFFFF'
+  },
+  period: {
+    bg: ['#FFF5F7', '#FFF5F7'],
+    headerText: '#D6336C',
+    subtext: '#868E96',
+    card: '#FFFFFF',
+    cardBorder: 'rgba(214, 51, 108, 0.15)',
+    title: '#D6336C',
+    desc: '#495057',
+    icon: '#D6336C'
+  }
+};
 
 export default function ResourcesScreen() {
   const router = useRouter();
+  const [activeFace, setActiveFace] = useState<'weather' | 'period'>('weather');
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadFace = async () => {
+        const savedFace = await SecureStore.getItemAsync('active_face');
+        if (savedFace === 'period') setActiveFace('period');
+        else setActiveFace('weather');
+      };
+      loadFace();
+    }, [])
+  );
+
+  const theme = THEMES[activeFace];
 
   const resources = [
     {
@@ -34,42 +75,42 @@ export default function ResourcesScreen() {
   ];
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>&lt; Back</Text>
-        </TouchableOpacity>
-      </View>
-      <ScrollView>
-        <Text style={styles.header}>Help Resources</Text>
-        <Text style={styles.subtext}>Quick links to organizations that can assist you in Vancouver and British Columbia.</Text>
-
-        {resources.map((item, index) => (
-          <TouchableOpacity 
-            key={index} 
-            style={styles.card}
-            onPress={() => Linking.openURL(item.url)}
-          >
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            <Text style={styles.cardDesc}>{item.description}</Text>
+    <LinearGradient colors={theme.bg as [string, string, ...string[]]} style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={styles.headerContainer}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={28} color={theme.icon} />
           </TouchableOpacity>
-        ))}
-        
-        <View style={styles.bottomSpacer} />
-      </ScrollView>
-    </View>
+        </View>
+        <ScrollView style={{ paddingHorizontal: 24 }}>
+          <Text style={[styles.header, { color: theme.headerText }]}>Help Resources</Text>
+          <Text style={[styles.subtext, { color: theme.subtext }]}>Quick links to organizations that can assist you in Vancouver and British Columbia.</Text>
+
+          {resources.map((item, index) => (
+            <TouchableOpacity 
+              key={index} 
+              style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+              onPress={() => Linking.openURL(item.url)}
+            >
+              <Text style={[styles.cardTitle, { color: theme.title }]}>{item.title}</Text>
+              <Text style={[styles.cardDesc, { color: theme.desc }]}>{item.description}</Text>
+            </TouchableOpacity>
+          ))}
+          
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#111', paddingTop: Platform.OS === 'ios' ? 40 : 20, paddingHorizontal: 20 },
-  headerContainer: { marginTop: 10, marginBottom: 10 },
-  header: { fontSize: 32, color: '#fff', fontWeight: 'bold', marginTop: 10 },
-  subtext: { color: '#aaa', marginBottom: 30, fontSize: 16 },
-  card: { backgroundColor: '#222', padding: 20, borderRadius: 10, marginBottom: 15 },
-  cardTitle: { color: '#4A90E2', fontSize: 18, fontWeight: 'bold', marginBottom: 5 },
-  cardDesc: { color: '#bbb', fontSize: 14 },
-  backBtn: { paddingVertical: 10 },
-  backBtnText: { color: '#4A90E2', fontSize: 18 },
+  headerContainer: { marginTop: 10, marginBottom: 10, paddingHorizontal: 20 },
+  header: { fontSize: 32, fontWeight: 'bold', marginTop: 10 },
+  subtext: { marginBottom: 30, fontSize: 16, lineHeight: 22 },
+  card: { padding: 22, borderRadius: 20, marginBottom: 16, borderWidth: 1.5 },
+  cardTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
+  cardDesc: { fontSize: 15, lineHeight: 20 },
+  backBtn: { paddingVertical: 10, marginLeft: -10 },
   bottomSpacer: { height: 50 }
 });

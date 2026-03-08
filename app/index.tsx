@@ -4,6 +4,7 @@ import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as SMS from 'expo-sms';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import TutorialOverlay, { TutorialStep } from '../components/TutorialOverlay';
 import WeatherIcon from '../components/WeatherIcon';
@@ -40,21 +41,23 @@ export default function WeatherCoverScreen() {
     checkTutorialStatus();
   }, [checkTutorialStatus]);
 
-  useEffect(() => {
-    async function loadSettings() {
-      try {
-        const face = await SecureStore.getItemAsync('active_face');
-        if (face === 'period') {
-          setActiveFace('period');
-        } else {
-          setActiveFace('weather');
+  useFocusEffect(
+    useCallback(() => {
+      async function loadSettings() {
+        try {
+          const face = await SecureStore.getItemAsync('active_face');
+          if (face === 'period') {
+            setActiveFace('period');
+          } else {
+            setActiveFace('weather');
+          }
+        } catch (err) {
+          console.error('Error loading face settings:', err);
         }
-      } catch (err) {
-        console.error('Error loading face settings:', err);
       }
-    }
-    loadSettings();
-  }, []);
+      loadSettings();
+    }, [])
+  );
 
   useEffect(() => {
     async function loadWeather() {
