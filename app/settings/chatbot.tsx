@@ -1,10 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
-import * as SecureStore from '../../utils/storage';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Markdown from 'react-native-markdown-display';
+import * as SecureStore from '../../utils/storage';
+
+const SYSTEM_PROMPT = `You are a compassionate safety planning assistant for people experiencing domestic abuse. 
+Your role is to help users create personalized safety plans. Focus on:
+- Financial safety (separate accounts, hidden savings)
+- Location safety (shelters, trusted contacts, disabling tracking)
+- Children's safety if applicable
+- Document safety (ID, passport, bank cards)
+- Digital safety (clearing history, monitored devices)
+Always be empathetic, non-judgmental, and prioritize the user's immediate safety.
+Keep responses concise and actionable. Remind users to clear browsing history if their device may be monitored.`;
 
 const THEMES = {
   weather: {
@@ -39,10 +50,12 @@ const THEMES = {
 
 export default function ChatbotScreen() {
   const router = useRouter();
-  const [messages, setMessages] = useState<{role: 'user' | 'ai', text: string}[]>([
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [messages, setMessages] = useState<{ role: 'user' | 'ai', text: string }[]>([
     { role: 'ai', text: 'Hello. I am here to help you form a safety plan. You can tell me about your current situation regarding finances, location, or safety, and I can give you advice on how to proceed.' }
   ]);
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [activeFace, setActiveFace] = useState<'weather' | 'period'>('weather');
 
   useFocusEffect(
@@ -58,31 +71,88 @@ export default function ChatbotScreen() {
 
   const theme = THEMES[activeFace];
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    
-    const userMsg = input.trim();
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+  const PREDEFINED_OPTIONS = [
+    "I need help with my finances",
+    "I need a safe location to leave",
+    "How can I protect my children?",
+    "I need general advice"
+  ];
+
+  const sendMessageToAI = async (userMsg: string) => {
+    if (isLoading) return;
+
+    setIsLoading(true);
     setInput('');
 
-    // Mock AI Response based on keywords
-    setTimeout(() => {
-      let aiResponse = "I hear you, and your safety is the most important thing. " +
-        "When making a plan, try to gather important documents (ID, passport, bank cards) and keep them in a safe place or with a trusted friend. ";
+    // Pre-populate UI with user message + empty AI bubble
+    setMessages(prev => [
+      ...prev,
+      { role: 'user', text: userMsg },
+      { role: 'ai', text: '' }
+    ]);
 
-      const lowerText = userMsg.toLowerCase();
-      if (lowerText.includes('money') || lowerText.includes('finance')) {
-        aiResponse += "For finances, try to quietly open a separate bank account if safe to do so, and slowly save money where your abuser cannot access it.";
-      } else if (lowerText.includes('location') || lowerText.includes('leave')) {
-        aiResponse += "If you are planning to leave, identify a safe place to go such as a local shelter (see 'Resources' tab) or a trusted friend's home. Disable location tracking on your phone and car.";
-      } else if (lowerText.includes('kids') || lowerText.includes('child')) {
-        aiResponse += "If you have children, plan a safe way to bring them with you, but do not tell them the plan too far in advance to avoid accidental disclosure. Pack a small bag for them as well.";
-      } else {
-        aiResponse += "Please refer to the 'Resources' tab for professional organizations that can help you execute a safe exit strategy. Remember to clear your browsing history and this app's data if you suspect your device is monitored.";
+    // Build history for API, formatting correctly for OpenRouter
+    const historyToUse = messages.length > 0 && messages[0].role === 'ai' ? messages.slice(1) : messages;
+    const conversationHistory = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      ...historyToUse.map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.text
+      })),
+      { role: 'user', content: userMsg }
+    ];
+
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.EXPO_PUBLIC_OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          "model": "openrouter/free", // This auto-routes to whatever free model is currently available to avoid 429s!
+          "messages": conversationHistory,
+        })
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`Received ${response.status} status from OpenRouter. Response body:`, errorBody);
+        throw new Error(`OpenRouter API error: ${response.status} - ${errorBody}`);
       }
 
-      setMessages(prev => [...prev, { role: 'ai', text: aiResponse }]);
-    }, 1000);
+      const data = await response.json();
+      const aiResponseText = data.choices[0]?.message?.content || "I couldn't process that response.";
+
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { role: 'ai', text: aiResponseText };
+        return updated;
+      });
+      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+    } catch (error: any) {
+      const errorMessage = error.message || String(error);
+      console.error('API integration error:', errorMessage);
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: 'ai',
+          text: `[DEBUG API ERROR]: ${errorMessage}`
+        };
+        return updated;
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOptionSelect = (option: string) => {
+    sendMessageToAI(option);
+  };
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+    sendMessageToAI(input.trim());
   };
 
   return (
@@ -102,35 +172,69 @@ export default function ChatbotScreen() {
             </Text>
           </View>
 
-          <ScrollView style={styles.chatArea} contentContainerStyle={{ paddingBottom: 20 }}>
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.chatArea}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+          >
             {messages.map((msg, index) => (
-              <View 
-                key={index} 
-                style={[
-                  styles.messageBubble, 
-                  msg.role === 'user' 
-                    ? [styles.userBubble, { backgroundColor: theme.userBubble, borderColor: theme.bubbleBorder }] 
-                    : [styles.aiBubble, { backgroundColor: theme.aiBubble, borderColor: theme.bubbleBorder }]
-                ]}
-              >
-                <Text style={[styles.messageText, { color: msg.role === 'user' ? '#fff' : activeFace === 'weather' ? '#fff' : '#495057' }]}>
-                  {msg.text}
-                </Text>
-              </View>
+              msg.text && msg.role !== 'ai' || (msg.role === 'ai' && msg.text !== '' && !msg.text.startsWith('[DEBUG')) ? (
+                <View
+                  key={index}
+                  style={[
+                    styles.messageBubble,
+                    msg.role === 'user'
+                      ? [styles.userBubble, { backgroundColor: theme.userBubble, borderColor: theme.bubbleBorder }]
+                      : [styles.aiBubble, { backgroundColor: theme.aiBubble, borderColor: theme.bubbleBorder }]
+                  ]}
+                >
+                  {msg.role === 'user' ? (
+                    <Text style={[styles.messageText, { color: msg.role === 'user' ? '#fff' : activeFace === 'weather' ? '#fff' : '#495057' }]}>
+                      {msg.text}
+                    </Text>
+                  ) : (
+                    <Markdown style={Object.assign({}, markdownStyles, { body: { color: activeFace === 'weather' ? '#fff' : '#495057', fontSize: 16, lineHeight: 24 } })}>{msg.text}</Markdown>
+                  )}
+                </View>
+              ) : msg.text && msg.text.startsWith('[DEBUG') ? (
+                <View key={index} style={[styles.messageBubble, styles.aiBubble, { backgroundColor: theme.aiBubble, borderColor: theme.bubbleBorder }]}>
+                  <Text style={[styles.messageText, { color: activeFace === 'weather' ? '#fff' : '#495057' }]}>{msg.text}</Text>
+                </View>
+              ) : (
+                // Loading bubble
+                <View key={index} style={[styles.messageBubble, styles.aiBubble, { backgroundColor: theme.aiBubble, borderColor: theme.bubbleBorder }]}>
+                  <Text style={[styles.messageText, { color: activeFace === 'weather' ? '#fff' : '#495057' }]}>...</Text>
+                </View>
+              )
             ))}
           </ScrollView>
 
+          <View style={[styles.optionsWrapper, { backgroundColor: 'transparent', borderTopColor: theme.bubbleBorder, borderTopWidth: 1 }]}>
+            {PREDEFINED_OPTIONS.map((option, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[styles.optionBtn, isLoading && styles.optionBtnDisabled, { backgroundColor: theme.aiBubble, borderColor: theme.bubbleBorder }]}
+                onPress={() => handleOptionSelect(option)}
+                disabled={isLoading}
+              >
+                <Text style={[styles.optionBtnText, { color: theme.buttonText }]}>{option}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
           <View style={[styles.inputArea, { backgroundColor: theme.header, borderTopColor: theme.bubbleBorder }]}>
-            <TextInput 
+            <TextInput
               style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: activeFace === 'weather' ? '#fff' : '#495057' }]}
               value={input}
               onChangeText={setInput}
               placeholder="Ask for advice..."
               placeholderTextColor={activeFace === 'weather' ? 'rgba(255,255,255,0.4)' : '#ADB5BD'}
               onSubmitEditing={handleSend}
+              editable={!isLoading}
             />
-            <TouchableOpacity style={[styles.sendBtn, { backgroundColor: theme.button, shadowColor: theme.button }]} onPress={handleSend}>
-              <Text style={[styles.sendBtnText, { color: theme.buttonText }]}>Send</Text>
+            <TouchableOpacity style={[styles.sendBtn, isLoading && styles.sendBtnDisabled, { backgroundColor: theme.button, shadowColor: theme.button }]} onPress={handleSend} disabled={isLoading}>
+              <Text style={[styles.sendBtnText, { color: theme.buttonText }]}>{isLoading ? '...' : 'Send'}</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -140,26 +244,26 @@ export default function ChatbotScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    paddingTop: 10, 
-    paddingBottom: 20, 
-    paddingHorizontal: 24, 
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
     borderBottomWidth: 1.5,
   },
   backBtn: { padding: 10, marginLeft: -10 },
-  headerTitle: { 
-    fontSize: 30, 
-    fontWeight: '700', 
+  headerTitle: {
+    fontSize: 30,
+    fontWeight: '700',
     marginLeft: 10,
     letterSpacing: -1,
   },
   chatArea: { flex: 1, padding: 24 },
-  messageBubble: { 
-    maxWidth: '85%', 
-    padding: 18, 
-    borderRadius: 20, 
+  messageBubble: {
+    maxWidth: '85%',
+    padding: 18,
+    borderRadius: 20,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -167,42 +271,47 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     borderWidth: 1,
   },
-  userBubble: { 
-    alignSelf: 'flex-end', 
+  userBubble: {
+    alignSelf: 'flex-end',
     borderBottomRightRadius: 4,
   },
-  aiBubble: { 
-    alignSelf: 'flex-start', 
+  aiBubble: {
+    alignSelf: 'flex-start',
     borderBottomLeftRadius: 4,
   },
-  messageText: { 
-    fontSize: 16, 
+  messageText: {
+    fontSize: 16,
     lineHeight: 24,
     fontWeight: '300',
   },
-  inputArea: { 
-    flexDirection: 'row', 
-    padding: 20, 
+  optionsWrapper: { flexDirection: 'row', flexWrap: 'wrap', padding: 10, gap: 10, justifyContent: 'center' },
+  optionBtn: { paddingVertical: 10, paddingHorizontal: 15, borderRadius: 20, borderWidth: 1 },
+  optionBtnDisabled: { opacity: 0.5 },
+  optionBtnText: { fontSize: 14, textAlign: 'center', fontWeight: '500' },
+  inputArea: {
+    flexDirection: 'row',
+    padding: 20,
     alignItems: 'center',
     borderTopWidth: 1.5,
   },
-  input: { 
-    flex: 1, 
-    padding: 16, 
-    borderRadius: 25, 
-    fontSize: 16, 
-    marginRight: 10, 
-    borderWidth: 1.5, 
+  input: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 25,
+    fontSize: 16,
+    marginRight: 10,
+    borderWidth: 1.5,
     fontWeight: '400',
   },
-  sendBtn: { 
-    paddingVertical: 14, 
-    paddingHorizontal: 24, 
+  sendBtn: {
+    paddingVertical: 14,
+    paddingHorizontal: 24,
     borderRadius: 25,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
   },
+  sendBtnDisabled: { opacity: 0.5 },
   sendBtnText: { fontWeight: '700', fontSize: 16 },
   warningBanner: {
     backgroundColor: 'rgba(61, 37, 37, 0.6)',
@@ -218,4 +327,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     opacity: 0.9,
   },
+});
+
+const markdownStyles = StyleSheet.create({
+  body: { color: '#fff', fontSize: 16, lineHeight: 24 },
+  strong: { fontWeight: 'bold' },
+  em: { fontStyle: 'italic' },
+  paragraph: { marginTop: 0, marginBottom: 5 },
+  list_item: { marginBottom: 5, flexDirection: 'row' },
+  bullet_list_icon: { color: '#fff', fontSize: 16, marginRight: 5 },
 });
