@@ -226,7 +226,7 @@ export default function WeatherCoverScreen() {
                   <Ionicons name="warning" size={20} color="#ff6b6b" style={{marginTop: 2, marginRight: 8}} />
                   <View>
                       <Text style={styles.sosCardTitle}>Severe Weather Alert</Text>
-                      <Text style={styles.sosCardSubtitle}>Winter Storm Warning until 11:00 PM</Text>
+                      <Text style={styles.sosCardSubtitle}>Air Quality Advisory until 11:00 PM</Text>
                   </View>
               </View>
             </TouchableOpacity>
@@ -485,6 +485,7 @@ const styles = StyleSheet.create({
     fontSize: 34,
     color: '#fff',
     fontWeight: '400',
+    textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.1)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -494,17 +495,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '200',
     marginVertical: -5,
+    textAlign: 'center',
   },
   condition: {
     fontSize: 20,
     color: '#fff',
     fontWeight: '500',
+    textAlign: 'center',
   },
   highLow: {
     fontSize: 20,
     color: '#fff',
     fontWeight: '500',
     marginTop: 2,
+    textAlign: 'center',
   },
   card: {
     backgroundColor: 'rgba(0, 50, 120, 0.25)',
