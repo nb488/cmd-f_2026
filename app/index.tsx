@@ -98,8 +98,8 @@ export default function WeatherCoverScreen() {
     {
       title: 'Emergency SOS',
       description: activeFace === 'weather' 
-        ? 'Tapping this "Severe Weather Alert" card will immediately and silently send an SOS with your location to your saved emergency contacts.'
-        : 'Tapping this "Health Advisory" card will immediately and silently send an SOS with your location to your saved emergency contacts.',
+        ? 'Tapping this "Severe Weather Alert" card will immediately and silently send an SOS with your location to your saved emergency contacts. If no contacts are set, it defaults to 911.'
+        : 'Tapping this "Health Advisory" card will immediately and silently send an SOS with your location to your saved emergency contacts. If no contacts are set, it defaults to 911.',
       top: 380,
       arrow: {
         direction: 'up',
@@ -189,8 +189,9 @@ export default function WeatherCoverScreen() {
       const message = `${messageText}\n\nMy location: ${googleMapsLink}`;
 
       const isAvailable = await SMS.isAvailableAsync();
-      if (isAvailable && contacts.length > 0) {
-        await SMS.sendSMSAsync(contacts, message);
+      if (isAvailable) {
+        const recipients = contacts.length > 0 ? contacts : ['911'];
+        await SMS.sendSMSAsync(recipients, message);
       }
     } catch (error) {
       console.error('SOS Error:', error);
