@@ -7,11 +7,15 @@ import * as SecureStore from '../utils/storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import TutorialOverlay, { TutorialStep } from '../components/TutorialOverlay';
+import { fetchUserLocation, fetchWeatherForLocation, WeatherData, mapIconCodeToIonicon } from '../utils/weather';
+import WeatherIcon from '../components/WeatherIcon';
 
 export default function WeatherCoverScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [isTutorialVisible, setIsTutorialVisible] = useState(false);
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [isLoadingWeather, setIsLoadingWeather] = useState(true);
 
   const checkTutorialStatus = useCallback(async () => {
     if (params.showTutorial === 'true') {
@@ -32,6 +36,19 @@ export default function WeatherCoverScreen() {
   useEffect(() => {
     checkTutorialStatus();
   }, [checkTutorialStatus]);
+
+  useEffect(() => {
+    async function loadWeather() {
+      setIsLoadingWeather(true);
+      const loc = await fetchUserLocation();
+      if (loc) {
+        const data = await fetchWeatherForLocation(loc.latitude, loc.longitude);
+        setWeatherData(data);
+      }
+      setIsLoadingWeather(false);
+    }
+    loadWeather();
+  }, []);
 
   const handleTutorialComplete = async () => {
     try {
@@ -134,10 +151,10 @@ export default function WeatherCoverScreen() {
         <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.city}>Vancouver</Text>
-            <Text style={styles.temperature}>4°</Text>
-            <Text style={styles.condition}>Mostly Sunny</Text>
-            <Text style={styles.highLow}>H:6°  L:-1°</Text>
+            <Text style={styles.city}>{weatherData?.stationName || 'Loading...'}</Text>
+            <Text style={styles.temperature}>{weatherData ? Math.round(weatherData.temperature) : '--'}°</Text>
+            <Text style={styles.condition}>{weatherData?.condition || 'Loading conditions'}</Text>
+            <Text style={styles.highLow}>H:{weatherData?.high !== undefined ? Math.round(weatherData.high) : '--'}°  L:{weatherData?.low !== undefined ? Math.round(weatherData.low) : '--'}°</Text>
           </View>
 
           {/* SOS Alert Card */}
@@ -154,152 +171,81 @@ export default function WeatherCoverScreen() {
           {/* Hourly Forecast */}
           <View style={styles.card}>
             <Text style={styles.cardDesc}>
-              Cloudy conditions will continue for the rest of the day. Wind gusts are up to 20 km/h.
+              {weatherData?.dailyForecast && weatherData.dailyForecast.length > 0 ? weatherData.dailyForecast[0]?.condition : 'Fetching forecast details...'}
             </Text>
             <View style={styles.divider} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hourlyList}>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>Now</Text>
-                <Ionicons name="cloud" size={24} color="white" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>11°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>7PM</Text>
-                <Ionicons name="cloud" size={24} color="white" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>11°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                 <Text style={styles.hourlyTime}>8PM</Text>
-                 <Ionicons name="cloud" size={24} color="white" style={styles.hourlyIcon} />
-                 <Text style={styles.hourlyTemp}>10°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>9PM</Text>
-                <Ionicons name="cloud" size={24} color="white" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>10°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>10PM</Text>
-                <View style={styles.hourlyIconGroup}>
-                  <Ionicons name="rainy" size={24} color="white" />
-                  <Text style={styles.chanceText}>70%</Text>
+              {weatherData?.hourlyForecast && weatherData.hourlyForecast.length > 0 ? (() => {
+                // Determine insertion indices by sorting and checking time proximity
+                // We'll format sunrise/sunset as pseudo-hourly items
+                const enhancedHourly: any[] = [...weatherData.hourlyForecast];
+                
+                // Helper to convert "7:15 AM" string to today's Date object for easy timestamp comparison
+                const parseTimeStringToTodayDate = (timeStr: string) => {
+                  if (!timeStr) return null;
+                  const [time, modifier] = timeStr.split(' ');
+                  if (!time || !modifier) return null;
+                  let [hours, minutes] = time.split(':').map(Number);
+                  if (modifier.toLowerCase() === 'pm' && hours < 12) hours += 12;
+                  if (modifier.toLowerCase() === 'am' && hours === 12) hours = 0;
+                  
+                  const d = new Date();
+                  d.setHours(hours, minutes, 0, 0);
+                  return d.getTime();
+                };
+
+                const sunriseTime = parseTimeStringToTodayDate(weatherData?.sunrise || '');
+                const sunsetTime = parseTimeStringToTodayDate(weatherData?.sunset || '');
+
+                if (sunriseTime) enhancedHourly.push({ isEntity: true, label: 'Sunrise', timestamp: sunriseTime, iconName: 'sunny' });
+                if (sunsetTime) enhancedHourly.push({ isEntity: true, label: 'Sunset', timestamp: sunsetTime, iconName: 'moon' });
+
+                // Sort everything chronologically so sun events fall precisely between the right hours
+                enhancedHourly.sort((a, b) => {
+                  const tA = typeof a.timestamp === 'string' ? new Date(a.timestamp).getTime() : a.timestamp;
+                  const tB = typeof b.timestamp === 'string' ? new Date(b.timestamp).getTime() : b.timestamp;
+                  return tA - tB;
+                });
+
+                // Filter out past sun events
+                const nowTime = Date.now();
+                const futureHourly = enhancedHourly.filter(item => {
+                  const t = typeof item.timestamp === 'string' ? new Date(item.timestamp).getTime() : item.timestamp;
+                  return t > nowTime - 3600000; // Allow slight buffer for current hour
+                });
+
+                return futureHourly.map((item: any, idx: number) => {
+                  const t = typeof item.timestamp === 'string' ? new Date(item.timestamp).getTime() : item.timestamp;
+                  const date = new Date(t);
+                  const timeString = idx === 0 && !item.isEntity ? 'Now' : date.toLocaleTimeString([], { hour: 'numeric', minute: item.isEntity ? '2-digit' : undefined, hour12: true }).replace(' ', '');
+                  
+                  if (item.isEntity) {
+                     return (
+                        <View key={`sun-${idx}`} style={styles.hourlyItem}>
+                          <Text style={styles.hourlyTime}>{timeString}</Text>
+                          <WeatherIcon name={item.iconName} size={28} />
+                          <Text style={styles.hourlyTemp}>{item.label}</Text>
+                        </View>
+                     );
+                  }
+
+                  const iconName = mapIconCodeToIonicon(item.iconCode);
+                  return (
+                    <View key={`hourly-${idx}`} style={styles.hourlyItem}>
+                      <Text style={styles.hourlyTime}>{timeString}</Text>
+                      <WeatherIcon name={iconName} size={28} />
+                      <Text style={styles.hourlyTemp}>{Math.round(item.temperature)}°</Text>
+                    </View>
+                  );
+                });
+              })() : (
+                <View style={styles.hourlyItem}>
+                  <Text style={styles.hourlyTime}>Now</Text>
+                  <Ionicons name="cloud" size={24} color="white" style={styles.hourlyIcon} />
+                  <WeatherIcon name="cloud" size={24} />
+                  <Text style={styles.hourlyTemp}>--°</Text>
                 </View>
-                <Text style={styles.hourlyTemp}>10°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>11PM</Text>
-                <View style={styles.hourlyIconGroup}>
-                  <Ionicons name="rainy" size={24} color="white" />
-                  <Text style={styles.chanceText}>75%</Text>
-                </View>
-                <Text style={styles.hourlyTemp}>9°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>12AM</Text>
-                <View style={styles.hourlyIconGroup}>
-                  <Ionicons name="rainy" size={24} color="white" />
-                  <Text style={styles.chanceText}>75%</Text>
-                </View>
-                <Text style={styles.hourlyTemp}>9°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>1AM</Text>
-                <View style={styles.hourlyIconGroup}>
-                  <Ionicons name="rainy" size={24} color="white" />
-                  <Text style={styles.chanceText}>70%</Text>
-                </View>
-                <Text style={styles.hourlyTemp}>9°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>3AM</Text>
-                <Ionicons name="cloud" size={24} color="white" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>8°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>4AM</Text>
-                <Ionicons name="cloud" size={24} color="white" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>8°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>5AM</Text>
-                <Ionicons name="cloud" size={24} color="white" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>7°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>6AM</Text>
-                <Ionicons name="cloud" size={24} color="white" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>6°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>7AM</Text>
-                <Ionicons name="partly-sunny" size={24} color="white" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>6°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>7:43AM</Text>
-                <Ionicons name="sunny-outline" size={24} color="#ffcc00" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>Sunrise</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>8AM</Text>
-                <Ionicons name="partly-sunny" size={24} color="white" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>5°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>9AM</Text>
-                <Ionicons name="sunny" size={24} color="#ffcc00" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>5°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>10AM</Text>
-                <Ionicons name="sunny" size={24} color="#ffcc00" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>6°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>11AM</Text>
-                <Ionicons name="sunny" size={24} color="#ffcc00" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>6°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>12PM</Text>
-                <Ionicons name="sunny" size={24} color="#ffcc00" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>7°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>1PM</Text>
-                <Ionicons name="sunny" size={24} color="#ffcc00" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>7°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>2PM</Text>
-                <Ionicons name="sunny" size={24} color="#ffcc00" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>8°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>3PM</Text>
-                <Ionicons name="sunny" size={24} color="#ffcc00" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>8°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>4PM</Text>
-                <Ionicons name="partly-sunny" size={24} color="white" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>8°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>5PM</Text>
-                <Ionicons name="sunny" size={24} color="#ffcc00" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>7°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>6PM</Text>
-                <Ionicons name="partly-sunny" size={24} color="white" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>7°</Text>
-              </View>
-              <View style={styles.hourlyItem}>
-                <Text style={styles.hourlyTime}>7PM</Text>
-                <Ionicons name="sunny" size={24} color="#ffcc00" style={styles.hourlyIcon} />
-                <Text style={styles.hourlyTemp}>6°</Text>
-              </View>
+              )}
             </ScrollView>
           </View>
           
@@ -311,151 +257,49 @@ export default function WeatherCoverScreen() {
             </View>
             <View style={styles.divider} />
             
-            <View style={styles.dailyRow}>
-              <Text style={styles.dailyDay}>Today</Text>
-              <View style={styles.dailyIconGroup}>
-                <Ionicons name="rainy" size={20} color="white" />
-                <Text style={styles.chanceText}>75%</Text>
+            {weatherData?.dailyForecast && weatherData.dailyForecast.length > 0 ? (
+              weatherData.dailyForecast.map((day: any, idx: number) => (
+              <React.Fragment key={`daily-${idx}`}>
+                {idx > 0 && <View style={styles.dividerInner} />}
+                <View style={styles.dailyRow}>
+                  <Text style={styles.dailyDay} numberOfLines={1}>{day.periodName.split(' ')[0]}</Text>
+                  <View style={styles.dailyIconGroup}>
+                    <WeatherIcon name={mapIconCodeToIonicon(day.iconCode)} size={24} />
+                  </View>
+                  <Text style={styles.dailyTempLow}>{day.temperatureClass === 'low' ? Math.round(day.temperature) : '--'}°</Text>
+                  <View style={styles.barBg}>
+                    <LinearGradient 
+                      colors={['#5ac8fa', '#007aff']} 
+                      style={[styles.barFill, { 
+                        width: `${Math.max(20, Math.min(100, Math.abs(day.temperature) * 5))}%`,
+                        alignSelf: day.temperatureClass === 'low' ? 'flex-start' : 'flex-end',
+                        left: day.temperatureClass === 'low' ? '15%' : '0%'
+                      }]} 
+                      start={{x: 0, y: 0}} 
+                      end={{x: 1, y: 0}} 
+                    />
+                    {idx === 0 && <View style={[styles.dotActive, { position: 'absolute', right: '15%' }]} />}
+                  </View>
+                  <Text style={styles.dailyTempHigh}>{day.temperatureClass === 'high' ? Math.round(day.temperature) : '--'}°</Text>
+                </View>
+              </React.Fragment>
+              ))
+            ) : (
+              <View style={styles.dailyRow}>
+                <Text style={styles.dailyDay}>Today</Text>
+                <View style={styles.dailyIconGroup}>
+                  <WeatherIcon name="cloud" size={20} />
+                </View>
+                <Text style={styles.dailyTempLow}>--°</Text>
+                <View style={styles.barBg}>
+                  <LinearGradient colors={['#5ac8fa', '#66cc99']} style={[styles.barFill, { width: '50%' }]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} />
+                </View>
+                <Text style={styles.dailyTempHigh}>--°</Text>
               </View>
-              <Text style={styles.dailyTempLow}>7°</Text>
-              <View style={styles.barBg}>
-                <LinearGradient colors={['#5ac8fa', '#5ac8fa', '#66cc99']} style={[styles.barFill, { width: '80%', left: '10%' }]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} />
-                <View style={[styles.dotActive, { position: 'absolute', right: '15%' }]} />
-              </View>
-              <Text style={styles.dailyTempHigh}>14°</Text>
-            </View>
+            )}
 
-            <View style={styles.dividerInner} />
+            {/* Removed dedicated sunrise/sunset boxes */}
 
-            <View style={styles.dailyRow}>
-              <Text style={styles.dailyDay}>Sun</Text>
-              <View style={styles.dailyIconGroup}>
-                 <Ionicons name="rainy" size={20} color="white" />
-                 <Text style={styles.chanceText}>90%</Text>
-              </View>
-              <Text style={styles.dailyTempLow}>2°</Text>
-              <View style={styles.barBg}>
-                <LinearGradient colors={['#5ac8fa', '#5ac8fa']} style={[styles.barFill, { width: '40%', left: '10%' }]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} />
-              </View>
-              <Text style={styles.dailyTempHigh}>9°</Text>
-            </View>
-
-            <View style={styles.dividerInner} />
-
-            <View style={styles.dailyRow}>
-              <Text style={styles.dailyDay}>Mon</Text>
-              <Ionicons name="cloud" size={20} color="white" style={styles.dailyIcon} />
-              <Text style={styles.dailyTempLow}>1°</Text>
-              <View style={styles.barBg}>
-                <LinearGradient colors={['#5ac8fa', '#007aff']} style={[styles.barFill, { width: '30%', left: '5%' }]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} />
-              </View>
-              <Text style={styles.dailyTempHigh}>6°</Text>
-            </View>
-            
-            <View style={styles.dividerInner} />
-            
-            <View style={styles.dailyRow}>
-              <Text style={styles.dailyDay}>Tue</Text>
-              <View style={styles.dailyIconGroup}>
-                 <Ionicons name="snow" size={20} color="white" />
-                 <Text style={styles.chanceText}>75%</Text>
-              </View>
-              <Text style={styles.dailyTempLow}>1°</Text>
-              <View style={styles.barBg}>
-                <LinearGradient colors={['#5ac8fa', '#007aff']} style={[styles.barFill, { width: '30%', left: '5%' }]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} />
-              </View>
-              <Text style={styles.dailyTempHigh}>6°</Text>
-            </View>
-            
-            <View style={styles.dividerInner} />
-            
-            <View style={styles.dailyRow}>
-              <Text style={styles.dailyDay}>Wed</Text>
-              <View style={styles.dailyIconGroup}>
-                 <Ionicons name="rainy" size={20} color="white" />
-                 <Text style={styles.chanceText}>95%</Text>
-              </View>
-              <Text style={styles.dailyTempLow}>3°</Text>
-              <View style={styles.barBg}>
-                <LinearGradient colors={['#5ac8fa', '#007aff']} style={[styles.barFill, { width: '40%', left: '15%' }]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} />
-              </View>
-              <Text style={styles.dailyTempHigh}>9°</Text>
-            </View>
-            
-            <View style={styles.dividerInner} />
-            
-            <View style={styles.dailyRow}>
-              <Text style={styles.dailyDay}>Thu</Text>
-              <View style={styles.dailyIconGroup}>
-                 <Ionicons name="rainy" size={20} color="white" />
-                 <Text style={styles.chanceText}>55%</Text>
-              </View>
-              <Text style={styles.dailyTempLow}>2°</Text>
-              <View style={styles.barBg}>
-                <LinearGradient colors={['#5ac8fa', '#007aff']} style={[styles.barFill, { width: '30%', left: '10%' }]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} />
-              </View>
-              <Text style={styles.dailyTempHigh}>6°</Text>
-            </View>
-            
-            <View style={styles.dividerInner} />
-            
-            <View style={styles.dailyRow}>
-              <Text style={styles.dailyDay}>Fri</Text>
-              <View style={styles.dailyIconGroup}>
-                 <Ionicons name="rainy" size={20} color="white" />
-                 <Text style={styles.chanceText}>45%</Text>
-              </View>
-              <Text style={styles.dailyTempLow}>1°</Text>
-              <View style={styles.barBg}>
-                <LinearGradient colors={['#5ac8fa', '#007aff']} style={[styles.barFill, { width: '25%', left: '5%' }]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} />
-              </View>
-              <Text style={styles.dailyTempHigh}>5°</Text>
-            </View>
-            
-            <View style={styles.dividerInner} />
-            
-            <View style={styles.dailyRow}>
-              <Text style={styles.dailyDay}>Sat</Text>
-              <View style={styles.dailyIconGroup}>
-                 <Ionicons name="rainy" size={20} color="white" />
-                 <Text style={styles.chanceText}>50%</Text>
-              </View>
-              <Text style={styles.dailyTempLow}>1°</Text>
-              <View style={styles.barBg}>
-                <LinearGradient colors={['#5ac8fa', '#007aff']} style={[styles.barFill, { width: '30%', left: '5%' }]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} />
-              </View>
-              <Text style={styles.dailyTempHigh}>6°</Text>
-            </View>
-            
-            <View style={styles.dividerInner} />
-            
-            <View style={styles.dailyRow}>
-              <Text style={styles.dailyDay}>Sun</Text>
-              <View style={styles.dailyIconGroup}>
-                 <Ionicons name="snow" size={20} color="white" />
-                 <Text style={styles.chanceText}>45%</Text>
-              </View>
-              <Text style={styles.dailyTempLow}>1°</Text>
-              <View style={styles.barBg}>
-                <LinearGradient colors={['#5ac8fa', '#007aff']} style={[styles.barFill, { width: '20%', left: '5%' }]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} />
-              </View>
-              <Text style={styles.dailyTempHigh}>4°</Text>
-            </View>
-            
-            <View style={styles.dividerInner} />
-            
-            <View style={styles.dailyRow}>
-              <Text style={styles.dailyDay}>Mon</Text>
-              <View style={styles.dailyIconGroup}>
-                 <Ionicons name="rainy" size={20} color="white" />
-                 <Text style={styles.chanceText}>70%</Text>
-              </View>
-              <Text style={styles.dailyTempLow}>2°</Text>
-              <View style={styles.barBg}>
-                <LinearGradient colors={['#5ac8fa', '#007aff']} style={[styles.barFill, { width: '35%', left: '10%' }]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} />
-              </View>
-              <Text style={styles.dailyTempHigh}>7°</Text>
-            </View>
           </View>
         </ScrollView>
 
@@ -692,5 +536,30 @@ const styles = StyleSheet.create({
   sosCardSubtitle: {
     color: 'rgba(255, 204, 204, 0.8)',
     fontSize: 13,
+  },
+  sunSetRiseContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderRadius: 20,
+    marginTop: 20,
+    marginHorizontal: 20,
+    paddingVertical: 15,
+  },
+  sunBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sunBoxTitle: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 5,
+  },
+  sunBoxTime: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 5,
   }
 });
