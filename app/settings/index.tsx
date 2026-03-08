@@ -106,8 +106,12 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert('Logout', 'Logout functionality not yet implemented.');
+  const handleTutorialPress = () => {
+    setShowTutorialText(true);
+    setTimeout(() => {
+      setShowTutorialText(false);
+      router.replace({ pathname: '/', params: { showTutorial: 'true' } });
+    }, 800);
   };
 
   return (
@@ -119,8 +123,9 @@ export default function SettingsScreen() {
               <Ionicons name="chevron-back" size={28} color={theme.icon} />
             </TouchableOpacity>
             <Text style={[styles.title, { color: theme.title }]}>Settings</Text>
-            <TouchableOpacity onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={24} color={theme.icon} />
+            <TouchableOpacity onPress={handleTutorialPress} style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {showTutorialText && <Text style={{ color: theme.helper, marginRight: 6, fontSize: 14 }}>Tutorial</Text>}
+              <FontAwesome5 name="question-circle" size={22} color={theme.icon} />
             </TouchableOpacity>
           </View>
 
