@@ -110,7 +110,7 @@ export default function ChatbotScreen() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          "model": "openrouter/free", // This auto-routes to whatever free model is currently available to avoid 429s!
+          "model": "openrouter/free",
           "messages": conversationHistory,
         })
       });

@@ -1,10 +1,10 @@
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as SMS from 'expo-sms';
 import React, { useCallback, useEffect, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
 import { ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import TutorialOverlay, { TutorialStep } from '../components/TutorialOverlay';
 import WeatherIcon from '../components/WeatherIcon';
@@ -102,7 +102,7 @@ export default function WeatherCoverScreen() {
       title: 'Emergency SOS',
       description: (
         <Text style={{ fontSize: 16, color: '#666', lineHeight: 24 }}>
-          {activeFace === 'weather' 
+          {activeFace === 'weather'
             ? 'Tapping this "Severe Weather Alert" card will immediately and silently send an SOS with your location to your saved emergency contacts. '
             : 'Tapping this "Health Advisory" card will immediately and silently send an SOS with your location to your saved emergency contacts. '}
           If no contacts are set, it defaults to <Text style={{ fontWeight: 'bold' }}>calling 911</Text>.
@@ -115,7 +115,7 @@ export default function WeatherCoverScreen() {
         left: '45%',
       },
       spotlight: activeFace === 'weather' ? {
-        top: 300, 
+        top: 300,
         left: '3%',
         width: '94%',
         height: 65,
@@ -187,7 +187,7 @@ export default function WeatherCoverScreen() {
 
       const customMessage = await SecureStore.getItemAsync('emergency_message');
       const messageText = customMessage || 'I need help. Please contact me or send assistance.';
-      
+
       const contactsStr = await SecureStore.getItemAsync('emergency_contacts');
       let contacts: string[] = [];
       if (contactsStr) {
@@ -207,14 +207,14 @@ export default function WeatherCoverScreen() {
   };
 
   return (
-    <ImageBackground 
-      source={require('../assets/images/sunny_background.png')} 
+    <ImageBackground
+      source={require('../assets/images/sunny_background.png')}
       style={styles.container}
       resizeMode="cover"
     >
-      <TutorialOverlay 
-        isVisible={isTutorialVisible} 
-        steps={tutorialSteps} 
+      <TutorialOverlay
+        isVisible={isTutorialVisible}
+        steps={tutorialSteps}
         onFinish={handleTutorialComplete}
         onExit={handleTutorialComplete}
       />
@@ -231,12 +231,12 @@ export default function WeatherCoverScreen() {
 
             {/* SOS Alert Card */}
             <TouchableOpacity onPress={handleSOSPress} activeOpacity={0.8} style={styles.sosCard}>
-              <View style={{flexDirection: 'row', alignItems: 'flex-start'}}>
-                  <Ionicons name="warning" size={20} color="#ff6b6b" style={{marginTop: 2, marginRight: 8}} />
-                  <View>
-                      <Text style={styles.sosCardTitle}>Severe Weather Alert</Text>
-                      <Text style={styles.sosCardSubtitle}>Air Quality Advisory until 11:00 PM</Text>
-                  </View>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                <Ionicons name="warning" size={20} color="#ff6b6b" style={{ marginTop: 2, marginRight: 8 }} />
+                <View>
+                  <Text style={styles.sosCardTitle}>Severe Weather Alert</Text>
+                  <Text style={styles.sosCardSubtitle}>Air Quality Advisory until 11:00 PM</Text>
+                </View>
               </View>
             </TouchableOpacity>
 
@@ -283,7 +283,7 @@ export default function WeatherCoverScreen() {
                     const t = typeof item.timestamp === 'string' ? new Date(item.timestamp).getTime() : item.timestamp;
                     const date = new Date(t);
                     const timeString = idx === 0 && !item.isEntity ? 'Now' : date.toLocaleTimeString([], { hour: 'numeric', minute: item.isEntity ? '2-digit' : undefined, hour12: true }).replace(' ', '');
-                    
+
                     if (item.isEntity) {
                        return (
                           <View key={`sun-${idx}`} style={styles.hourlyItem}>
@@ -320,7 +320,7 @@ export default function WeatherCoverScreen() {
                 )}
               </ScrollView>
             </View>
-            
+
             {/* 10-Day Forecast */}
             <View style={[styles.card, { marginBottom: 100 }]}>
               <View style={styles.cardHeader}>
@@ -328,7 +328,7 @@ export default function WeatherCoverScreen() {
                 <Text style={styles.cardTitle}>10-DAY FORECAST</Text>
               </View>
               <View style={styles.divider} />
-              
+
               {weatherData?.dailyForecast && weatherData.dailyForecast.length > 0 ? (
                 weatherData.dailyForecast.map((day: any, idx: number) => {
                   let displayDay = day.periodName.split(' ')[0];
@@ -347,15 +347,15 @@ export default function WeatherCoverScreen() {
                         </View>
                         <Text style={styles.dailyTempLow}>{day.temperatureClass === 'low' ? Math.round(day.temperature) : '--'}°</Text>
                         <View style={styles.barBg}>
-                          <LinearGradient 
-                            colors={['#5ac8fa', '#007aff']} 
-                            style={[styles.barFill, { 
+                          <LinearGradient
+                            colors={['#5ac8fa', '#007aff']}
+                            style={[styles.barFill, {
                               width: `${Math.max(20, Math.min(100, Math.abs(day.temperature) * 5))}%`,
                               alignSelf: day.temperatureClass === 'low' ? 'flex-start' : 'flex-end',
                               left: day.temperatureClass === 'low' ? '15%' : '0%'
-                            }]} 
-                            start={{x: 0, y: 0}} 
-                            end={{x: 1, y: 0}} 
+                            }]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
                           />
                           {idx === 0 && <View style={[styles.dotActive, { position: 'absolute', right: '15%' }]} />}
                         </View>
@@ -372,7 +372,7 @@ export default function WeatherCoverScreen() {
                   </View>
                   <Text style={styles.dailyTempLow}>--°</Text>
                   <View style={styles.barBg}>
-                    <LinearGradient colors={['#5ac8fa', '#66cc99']} style={[styles.barFill, { width: '50%' }]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} />
+                    <LinearGradient colors={['#5ac8fa', '#66cc99']} style={[styles.barFill, { width: '50%' }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
                   </View>
                   <Text style={styles.dailyTempHigh}>--°</Text>
                 </View>
@@ -383,37 +383,37 @@ export default function WeatherCoverScreen() {
           <ScrollView style={[styles.scroll, { backgroundColor: '#FFF5F7' }]} showsVerticalScrollIndicator={false}>
             {/* Period Tracker Header */}
             <View style={[styles.header, { marginTop: Platform.OS === 'ios' ? 20 : 40 }]}>
-               <Text style={[styles.city, { color: '#D6336C', fontWeight: 'bold' }]}>Our Cycle</Text>
-               <Text style={[styles.subtext, { color: '#D6336C', opacity: 0.7 }]}>Day 12 - Follicular Phase</Text>
+              <Text style={[styles.city, { color: '#D6336C', fontWeight: 'bold' }]}>Your Cycle</Text>
+              <Text style={[styles.subtext, { color: '#D6336C', opacity: 0.7 }]}>Day 12 - Follicular Phase</Text>
             </View>
 
             {/* Circular Progress (Hero) */}
             <View style={styles.periodHero}>
-                <LinearGradient
-                  colors={['#FFD1DC', '#FFB7C5']}
-                  style={styles.periodCircle}
-                >
-                  <View style={styles.periodCircleInner}>
-                    <Text style={styles.periodMessage}>Period in</Text>
-                    <Text style={styles.periodDays}>5 Days</Text>
-                  </View>
-                </LinearGradient>
+              <LinearGradient
+                colors={['#FFD1DC', '#FFB7C5']}
+                style={styles.periodCircle}
+              >
+                <View style={styles.periodCircleInner}>
+                  <Text style={styles.periodMessage}>Period in</Text>
+                  <Text style={styles.periodDays}>5 Days</Text>
+                </View>
+              </LinearGradient>
             </View>
 
             {/* Non-functional Edit Dates Button */}
             <TouchableOpacity activeOpacity={0.8} style={styles.logSymptomsBtn}>
-                <LinearGradient
-                  colors={['#FFB7C5', '#FFD1DC']}
-                  style={styles.logSymptomsGradient}
-                >
-                  <Text style={[styles.logSymptomsText, { color: '#D6336C' }]}>Edit Period Dates</Text>
-                </LinearGradient>
+              <LinearGradient
+                colors={['#FFB7C5', '#FFD1DC']}
+                style={styles.logSymptomsGradient}
+              >
+                <Text style={[styles.logSymptomsText, { color: '#D6336C' }]}>Edit Period Dates</Text>
+              </LinearGradient>
             </TouchableOpacity>
 
             {/* Separate SOS Trigger */}
             <TouchableOpacity onPress={handleSOSPress} activeOpacity={0.8} style={styles.periodSOSCard}>
-              <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                <Ionicons name="medical" size={20} color="#D6336C" style={{marginRight: 10}} />
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="medical" size={20} color="#D6336C" style={{ marginRight: 10 }} />
                 <View>
                   <Text style={styles.periodSOSTitle}>Health Advisory</Text>
                   <Text style={styles.periodSOSSub}>Cycle regularity and wellness tips</Text>
@@ -441,19 +441,19 @@ export default function WeatherCoverScreen() {
               </View>
             </View>
 
-            <View style={{height: 100}} />
+            <View style={{ height: 100 }} />
           </ScrollView>
         )}
 
         {/* Bottom Bar */}
         <View style={[styles.bottomBar, activeFace === 'period' && styles.periodBottomBar]}>
           <Ionicons name={activeFace === 'weather' ? "map-outline" : "calendar-outline"} size={28} color={activeFace === 'weather' ? "white" : "#D6336C"} />
-          
+
           <View style={styles.pageControl}>
-             <Ionicons name={activeFace === 'weather' ? "location-sharp" : "ellipse"} size={12} color={activeFace === 'weather' ? "white" : "#D6336C"} style={{ marginHorizontal: 2 }}/>
-             <View style={[activeFace === 'weather' ? styles.dotActive : styles.periodDotActive]} />
-             <View style={[activeFace === 'weather' ? styles.dot : styles.periodDotInactive]} />
-             <View style={[activeFace === 'weather' ? styles.dot : styles.periodDotInactive]} />
+            <Ionicons name={activeFace === 'weather' ? "location-sharp" : "ellipse"} size={12} color={activeFace === 'weather' ? "white" : "#D6336C"} style={{ marginHorizontal: 2 }} />
+            <View style={[activeFace === 'weather' ? styles.dotActive : styles.periodDotActive]} />
+            <View style={[activeFace === 'weather' ? styles.dot : styles.periodDotInactive]} />
+            <View style={[activeFace === 'weather' ? styles.dot : styles.periodDotInactive]} />
           </View>
 
           <TouchableOpacity onPress={handleSettingsPress} style={[styles.settingsButton, activeFace === 'period' && { backgroundColor: 'rgba(214, 51, 108, 0.1)' }]} activeOpacity={0.8}>
@@ -472,7 +472,7 @@ export default function WeatherCoverScreen() {
                 <Text style={[styles.countdownNumber, activeFace === 'period' && { color: '#D6336C' }]}>{countdown}</Text>
               </View>
               <Text style={[styles.countdownSubtext, activeFace === 'period' && { color: '#868E96' }]}>Your emergency contacts will be notified in {countdown} seconds.</Text>
-              
+
               <TouchableOpacity onPress={handleCancelSOS} style={styles.cancelSOSBtn}>
                 <Text style={styles.cancelSOSText}>CANCEL</Text>
               </TouchableOpacity>
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   hourlyTempContainer: {
-    height: 28,
+    height: 30,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -575,7 +575,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
-    marginBottom: 10,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   hourlyIconGroup: {
     marginBottom: 10,
